@@ -12,13 +12,13 @@ deployment:
     # 3. Entrar al proyecto
     - cd $DEPLOYPATH
 
-    # 4. Instalar dependencias con PHP 8.4
-    - /opt/cpanel/ea-php84/root/usr/bin/php /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+    # 4. Instalar dependencias
+    - composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 
-    # 5. Ejecutar solo las migraciones nuevas
+    # 5. Ejecutar migraciones con PHP 8.4
     - /opt/cpanel/ea-php84/root/usr/bin/php artisan migrate --force
 
-    # 6. Cachear configuración, rutas y vistas
+    # 6. Cachear configuración, rutas y vistas con PHP 8.4
     - /opt/cpanel/ea-php84/root/usr/bin/php artisan config:cache
     - /opt/cpanel/ea-php84/root/usr/bin/php artisan route:cache
     - /opt/cpanel/ea-php84/root/usr/bin/php artisan view:cache
