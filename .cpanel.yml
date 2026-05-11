@@ -3,15 +3,15 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/met4s0ft3/tecnologico.metasoft-bolivia.com/api
     # 1. Borrar TODO excepto .env, storage y .htaccess
-    - 'find $DEPLOYPATH -mindepth 1 -not \( -name ".env" -o -name "storage" -o -name ".htaccess" \) -exec rm -rf {} \; 2>/dev/null || true'
+    - find $DEPLOYPATH -mindepth 1 -not \( -name ".env" -o -name "storage" -o -name ".htaccess" \) -exec rm -rf {} \; 2>/dev/null || true
     # 2. Copiar archivos frescos del repositorio
     - /bin/cp -R ./* $DEPLOYPATH
     # 3. Instalar dependencias de Composer
     - cd $DEPLOYPATH
     - composer install --no-dev --optimize-autoloader --no-interaction --no-progress
-    # 4. Ejecutar solo las migraciones nuevas (seguro para produccion)
+    # 4. Ejecutar solo las migraciones nuevas (seguro para producción)
     - php artisan migrate --force
-    # 5. Cachear configuracion, rutas y vistas
+    # 5. Cachear configuración, rutas y vistas
     - php artisan config:cache
     - php artisan route:cache
     - php artisan view:cache
