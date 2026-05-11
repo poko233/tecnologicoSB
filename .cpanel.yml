@@ -9,9 +9,9 @@ deployment:
     # 3. Instalar dependencias de Composer
     - cd $DEPLOYPATH
     - composer install --no-dev --optimize-autoloader --no-interaction --no-progress
-    # 4. Ejecutar solo las migraciones nuevas (seguro para producción)
+    # 4. Ejecutar solo las migraciones nuevas (seguro para produccion)
     - php artisan migrate --force
-    # 5. Cachear configuración, rutas y vistas
+    # 5. Cachear configuracion, rutas y vistas
     - php artisan config:cache
     - php artisan route:cache
     - php artisan view:cache
