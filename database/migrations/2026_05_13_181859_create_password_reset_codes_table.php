@@ -11,9 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('rols', function (Blueprint $table) {
+        Schema::create('password_reset_codes', function (Blueprint $table) {
             $table->id();
+
+            $table->string('correo');
+
+            $table->string('code', 6);
+
+            $table->timestamp('expires_at');
+
+            $table->boolean('used')->default(false);
+
             $table->timestamps();
+
+            $table->index('correo');
+            $table->index('code');
         });
     }
 
@@ -22,6 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('rols');
+        Schema::dropIfExists('password_reset_codes');
     }
 };
