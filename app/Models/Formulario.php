@@ -11,10 +11,26 @@ class Formulario extends Model
         'formulario',
         'descripcion',
         'ruta',
+        'componente',
+        'icono',
+        'orden',
     ];
 
-        public function modulos()
+    protected $casts = [
+        'orden' => 'integer',
+    ];
+
+    public function modulos()
     {
         return $this->belongsToMany(Modulo::class, 'formulario_modulo', 'id_formulario', 'id_modulo');
+    }
+
+    /**
+     * Permisos CRUD definidos para este formulario.
+     * Úsalo para consultar: $formulario->permisos()->where('id_rol', $rolId)->first()
+     */
+    public function permisos()
+    {
+        return $this->hasMany(Permiso::class, 'id_formulario');
     }
 }

@@ -12,6 +12,9 @@ class FormularioResource extends JsonResource
             'formulario'  => $this->formulario,
             'descripcion' => $this->descripcion,
             'ruta'        => $this->ruta,
+            'componente'  => $this->componente,
+            'icono'       => $this->icono,
+            'orden'       => $this->orden,
         ];
     }
 }

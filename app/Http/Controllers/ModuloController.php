@@ -20,9 +20,11 @@ class ModuloController extends Controller
             'modulo'      => 'required|string|max:40|unique:modulo,modulo',
             'descripcion' => 'nullable|string',
             'icono'       => 'nullable|string',
+            'sidebar'     => 'boolean',
+            'orden'       => 'integer|min:0',
         ]);
 
-        $modulo = Modulo::create($request->only('modulo', 'descripcion', 'icono'));
+        $modulo = Modulo::create($request->only('modulo', 'descripcion', 'icono', 'sidebar', 'orden'));
 
         return (new ModuloResource($modulo))
             ->response()
@@ -40,9 +42,11 @@ class ModuloController extends Controller
             'modulo'      => 'required|string|max:40|unique:modulo,modulo,' . $modulo->id,
             'descripcion' => 'nullable|string',
             'icono'       => 'nullable|string',
+            'sidebar'     => 'boolean',
+            'orden'       => 'integer|min:0',
         ]);
 
-        $modulo->update($request->only('modulo', 'descripcion', 'icono'));
+        $modulo->update($request->only('modulo', 'descripcion', 'icono', 'sidebar', 'orden'));
 
         return new ModuloResource($modulo);
     }

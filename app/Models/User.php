@@ -60,4 +60,16 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /** Roles del usuario (tabla pivote user_rol). */
+    public function roles()
+    {
+        return $this->belongsToMany(Rol::class, 'user_rol', 'id_user', 'id_rol');
+    }
+
+    /** Sucursales asignadas al usuario. */
+    public function sucursales()
+    {
+        return $this->belongsToMany(Sucursal::class, 'user_sucursal', 'id_user', 'id_sucursal');
+    }
 }

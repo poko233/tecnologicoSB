@@ -11,15 +11,29 @@ class Modulo extends Model
         'modulo',
         'descripcion',
         'icono',
+        'sidebar',
+        'orden',
     ];
 
+    protected $casts = [
+        'sidebar' => 'boolean',
+        'orden'   => 'integer',
+    ];
+
+    /** Roles que tienen acceso directo a este módulo (modulo_rol). */
     public function roles()
     {
         return $this->belongsToMany(Rol::class, 'modulo_rol', 'id_modulo', 'id_rol');
     }
 
+    /** Formularios hijos de este módulo, ordenados. */
     public function formularios()
     {
-        return $this->belongsToMany(Formulario::class, 'formulario_modulo', 'id_modulo', 'id_formulario');
+        return $this->belongsToMany(
+            Formulario::class,
+            'formulario_modulo',
+            'id_modulo',
+            'id_formulario'
+        )->orderBy('orden');
     }
 }

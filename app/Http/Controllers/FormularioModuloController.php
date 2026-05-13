@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\FormularioResource;
@@ -22,9 +22,12 @@ class FormularioModuloController extends Controller
             'formulario'  => 'required|string|max:40',
             'descripcion' => 'nullable|string',
             'ruta'        => 'nullable|string|max:40',
+            'componente'  => 'nullable|string|max:80',
+            'icono'       => 'nullable|string|max:60',
+            'orden'       => 'integer|min:0',
         ]);
 
-        $formulario = Formulario::create($request->only('formulario', 'descripcion', 'ruta'));
+        $formulario = Formulario::create($request->only('formulario', 'descripcion', 'ruta', 'componente', 'icono', 'orden'));
 
         $modulo->formularios()->attach($formulario->id);
 
@@ -39,9 +42,12 @@ class FormularioModuloController extends Controller
             'formulario'  => 'required|string|max:40',
             'descripcion' => 'nullable|string',
             'ruta'        => 'nullable|string|max:40',
+            'componente'  => 'nullable|string|max:80',
+            'icono'       => 'nullable|string|max:60',
+            'orden'       => 'integer|min:0',
         ]);
 
-        $formulario->update($request->only('formulario', 'descripcion', 'ruta'));
+        $formulario->update($request->only('formulario', 'descripcion', 'ruta', 'componente', 'icono', 'orden'));
 
         return new FormularioResource($formulario);
     }
