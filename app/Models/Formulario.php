@@ -12,13 +12,9 @@ class Formulario extends Model
         'descripcion',
         'ruta',
         'componente',
-        'icono',
-        'orden',
     ];
 
-    protected $casts = [
-        'orden' => 'integer',
-    ];
+    
 
     public function modulos()
     {

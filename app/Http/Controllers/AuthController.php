@@ -110,6 +110,7 @@ class AuthController extends Controller
             'telefono' => $validated['telefono'] ?? null,
             'celular' => $validated['celular'] ?? null,
             'estado' => 'ACTIVO',
+            'id_rol' => 'nullable|exists:rol,id',
         ]);
 
         $token = $user->createToken('mobile')->plainTextToken;

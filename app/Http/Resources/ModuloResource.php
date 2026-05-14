@@ -12,11 +12,6 @@ class ModuloResource extends JsonResource
             'modulo'      => $this->modulo,
             'descripcion' => $this->descripcion,
             'icono'       => $this->icono,
-            'sidebar'     => $this->sidebar,
-            'orden'       => $this->orden,
-            'formularios' => FormularioResource::collection(
-                $this->whenLoaded('formularios')
-            ),
         ];
     }
 }

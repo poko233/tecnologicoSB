@@ -3,32 +3,31 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Models\Modulo;
+use App\Models\Formulario;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 
-class ModuloController extends Controller
+class FormularioController extends Controller
 {
-
     public function index(): JsonResponse
     {
-        $modulos = Modulo::with(['roles', 'formularios'])->get();
+        $formularios = Formulario::with(['modulos', 'permisos'])->get();
 
         return response()->json([
             'success' => true,
-            'data'    => $modulos,
+            'data'    => $formularios,
         ]);
     }
-
 
     public function store(Request $request): JsonResponse
     {
         try {
             $validated = $request->validate([
-                'modulo'      => 'required|string|max:100|unique:modulo,modulo',
+                'formulario'  => 'required|string|max:100|unique:formulario,formulario',
                 'descripcion' => 'nullable|string|max:255',
-                'icono'       => 'nullable|string|max:100',
+                'ruta'        => 'nullable|string|max:255',
+                'componente'  => 'nullable|string|max:255',
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -37,50 +36,51 @@ class ModuloController extends Controller
             ], 422);
         }
 
-        $modulo = Modulo::create($validated);
+        $formulario = Formulario::create($validated);
 
         return response()->json([
             'success' => true,
-            'message' => 'Módulo creado correctamente.',
-            'data'    => $modulo,
+            'message' => 'Formulario creado correctamente.',
+            'data'    => $formulario,
         ], 201);
     }
 
 
     public function show(int $id): JsonResponse
     {
-        $modulo = Modulo::with(['roles', 'formularios'])->find($id);
+        $formulario = Formulario::with(['modulos', 'permisos'])->find($id);
 
-        if (! $modulo) {
+        if (! $formulario) {
             return response()->json([
                 'success' => false,
-                'message' => 'Módulo no encontrado.',
+                'message' => 'Formulario no encontrado.',
             ], 404);
         }
 
         return response()->json([
             'success' => true,
-            'data'    => $modulo,
+            'data'    => $formulario,
         ]);
     }
 
-
+    
     public function update(Request $request, int $id): JsonResponse
     {
-        $modulo = Modulo::find($id);
+        $formulario = Formulario::find($id);
 
-        if (! $modulo) {
+        if (! $formulario) {
             return response()->json([
                 'success' => false,
-                'message' => 'Módulo no encontrado.',
+                'message' => 'Formulario no encontrado.',
             ], 404);
         }
 
         try {
             $validated = $request->validate([
-                'modulo'      => 'sometimes|required|string|max:100|unique:modulo,modulo,' . $id,
+                'formulario'  => 'sometimes|required|string|max:100|unique:formulario,formulario,' . $id,
                 'descripcion' => 'nullable|string|max:255',
-                'icono'       => 'nullable|string|max:100',
+                'ruta'        => 'nullable|string|max:255',
+                'componente'  => 'nullable|string|max:255',
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -89,31 +89,32 @@ class ModuloController extends Controller
             ], 422);
         }
 
-        $modulo->update($validated);
+        $formulario->update($validated);
 
         return response()->json([
             'success' => true,
-            'message' => 'Módulo actualizado correctamente.',
-            'data'    => $modulo,
+            'message' => 'Formulario actualizado correctamente.',
+            'data'    => $formulario,
         ]);
     }
 
+    
     public function destroy(int $id): JsonResponse
     {
-        $modulo = Modulo::find($id);
+        $formulario = Formulario::find($id);
 
-        if (! $modulo) {
+        if (! $formulario) {
             return response()->json([
                 'success' => false,
-                'message' => 'Módulo no encontrado.',
+                'message' => 'Formulario no encontrado.',
             ], 404);
         }
 
-        $modulo->delete();
+        $formulario->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Módulo eliminado correctamente.',
+            'message' => 'Formulario eliminado correctamente.',
         ]);
     }
 }
