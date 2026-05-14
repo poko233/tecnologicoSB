@@ -9,13 +9,13 @@ use Illuminate\Support\Facades\Route;
 
 // Rutas Públicas de Autenticación
 Route::post('/login',    [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
 
 // Rutas Protegidas por Token
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user',    [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
-
+    
+    Route::post('/register', [AuthController::class, 'register']);
     // Sidebar dinámico — alimenta el menú lateral del frontend
     // Devuelve módulos + formularios filtrados por permisos del usuario
     Route::get('/sidebar', [SidebarController::class, 'index']);

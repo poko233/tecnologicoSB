@@ -30,30 +30,37 @@ class AuthController extends Controller
 
         $login = trim($validated['usuario']);
 
-        // Permitimos login por usuario, ci o email por mayor flexibilidad
+        // 1. Buscar usuario
         $user = User::where('usuario', $login)
             ->orWhere('ci', $login)
             ->orWhere('email', $login)
             ->first();
 
+        // 2. Validar existencia y contraseña
         if (!$user || !Hash::check($validated['password'], $user->password)) {
-            // El front-end mostrará este message en el Toast
             return response()->json([
                 'message' => 'Las credenciales proporcionadas son incorrectas.',
             ], 401);
         }
 
+        // 3. Validar estado
         if ($user->estado === 'INACTIVO') {
             return response()->json([
                 'message' => 'Su cuenta se encuentra inactiva. Contacte con el administrador.',
             ], 403);
         }
 
+        // 4. Crear token
         $token = $user->createToken('mobile')->plainTextToken;
 
+        // 5. Cargar roles y formatear para el frontend
+        $user->load('roles');
+        $userData = $user->toArray();
+        $userData['roles'] = $user->roles->pluck('rol')->toArray();
+
         return response()->json([
-            'token' => $token,
-            'user' => $user,
+            'token'   => $token,
+            'user'    => $userData,
             'message' => 'Sesión iniciada correctamente',
         ]);
     }
@@ -62,73 +69,130 @@ class AuthController extends Controller
     {
         try {
             $validated = $request->validate([
-                'usuario' => 'required|string|max:40|unique:user,usuario',
-                'password' => 'required|string|min:6',
-                'ci' => 'required|string|max:12|unique:user,ci',
-                'nombres' => 'required|string|max:40',
+                'usuario'   => 'required|string|max:40|unique:user,usuario',
+                'password'  => 'required|string|min:6',
+                'ci'        => 'required|string|max:12|unique:user,ci',
+                'nombres'   => 'required|string|max:40',
                 'apellidos' => 'required|string|max:40',
-                'genero' => 'required|in:MASCULINO,FEMENINO',
-                'fecha_nac' => 'required|date',
-                'email' => 'nullable|email|max:80',
-                'telefono' => 'nullable|string|max:10',
-                'celular' => 'nullable|string|max:10',
+                'genero'    => 'required|in:MASCULINO,FEMENINO',
+                'fecha_nac' => 'required|date|before:today|after:'.now()->subYears(150)->format('Y-m-d'),
+                'email'     => 'nullable|email|max:80',
+                'telefono'  => 'nullable|string|max:10',
+                'celular'   => 'nullable|string|max:10',
+                'roles'     => 'required|array|min:1',
+                'roles.*'   => 'exists:rol,rol',   // <-- validar que exista el nombre de rol
             ], [
-                'usuario.required' => 'El nombre de usuario es obligatorio.',
-                'usuario.unique' => 'Este nombre de usuario ya está en uso.',
-                'password.required' => 'La contraseña es obligatoria.',
-                'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
-                'ci.required' => 'El CI es obligatorio.',
-                'ci.unique' => 'Este número de CI ya se encuentra registrado.',
-                'nombres.required' => 'Los nombres son obligatorios.',
-                'apellidos.required' => 'Los apellidos son obligatorios.',
-                'genero.required' => 'El género es obligatorio.',
-                'genero.in' => 'El género debe ser MASCULINO o FEMENINO.',
-                'fecha_nac.required' => 'La fecha de nacimiento es obligatoria.',
-                'fecha_nac.date' => 'La fecha de nacimiento no es válida.',
-                'email.email' => 'El correo electrónico no es válido.',
+                'roles.required' => 'Debe seleccionar al menos un rol.',
+                'roles.*.exists' => 'El rol seleccionado no es válido.',
             ]);
         } catch (ValidationException $e) {
-            // Extraemos el primer error específico para mandarlo en "message"
-            // Así tu httpClient.ts lo atrapa de json.message y lo muestra en el Toast
             $firstError = collect($e->errors())->flatten()->first();
-            
             return response()->json([
                 'message' => $firstError ?? 'Algunos datos ya se encuentran registrados o son inválidos.',
-                'errors' => $e->errors(),
+                'errors'  => $e->errors(),
             ], 422);
         }
 
-        $user = User::create([
-            'usuario' => $validated['usuario'],
-            'password' => $validated['password'], // Se hasheará automáticamente por el cast 'hashed' en el modelo User
-            'ci' => $validated['ci'],
-            'nombres' => $validated['nombres'],
+        // Verificar permisos del usuario autenticado para asignar los roles solicitados
+        $currentUser = $request->user();
+        $currentRoles = $currentUser->roles->pluck('rol')->toArray();
+        $allowedRolesForAssign = $this->allowedRolesForAssign($currentRoles);
+
+        $requestedRoleNames = $validated['roles'];   // array de strings (nombres de rol)
+
+        foreach ($requestedRoleNames as $requestedRole) {
+            if (!in_array($requestedRole, $allowedRolesForAssign)) {
+                return response()->json([
+                    'message' => "No tiene permiso para asignar el rol '{$requestedRole}'.",
+                ], 403);
+            }
+        }
+
+        // Obtener los IDs correspondientes a los nombres de rol
+        $requestedRoleIds = \App\Models\Rol::whereIn('rol', $requestedRoleNames)
+            ->pluck('id')
+            ->toArray();
+
+        // Crear usuario
+        $user = \App\Models\User::create([
+            'usuario'   => $validated['usuario'],
+            'password'  => $validated['password'],
+            'ci'        => $validated['ci'],
+            'nombres'   => $validated['nombres'],
             'apellidos' => $validated['apellidos'],
-            'genero' => $validated['genero'],
+            'genero'    => $validated['genero'],
             'fecha_nac' => $validated['fecha_nac'],
-            'email' => isset($validated['email']) ? strtolower(trim($validated['email'])) : null,
-            'telefono' => $validated['telefono'] ?? null,
-            'celular' => $validated['celular'] ?? null,
-            'estado' => 'ACTIVO',
+            'email'     => isset($validated['email']) ? strtolower(trim($validated['email'])) : null,
+            'telefono'  => $validated['telefono'] ?? null,
+            'celular'   => $validated['celular'] ?? null,
+            'estado'    => 'ACTIVO',
         ]);
+
+        // Asignar roles
+        $user->roles()->sync($requestedRoleIds);
+        $user->load('roles');
+        $userData = $user->toArray();
+        $userData['roles'] = $user->roles->pluck('rol')->toArray();
 
         $token = $user->createToken('mobile')->plainTextToken;
 
         return response()->json([
-            'token' => $token,
-            'user' => $user,
+            'token'   => $token,
+            'user'    => $userData,
             'message' => 'Usuario registrado exitosamente',
         ], 201);
     }
 
+    // Jerarquía de asignación de roles
+    private function allowedRolesForAssign(array $currentUserRoles): array
+    {
+        $allowed = [];
+
+        foreach ($currentUserRoles as $role) {
+            switch ($role) {
+                case 'Administrador':
+                    $allowed = array_merge($allowed, ['Personal']);
+                    break;
+                case 'Rector':
+                    $allowed = array_merge($allowed, ['Administrador', 'Personal']);
+                    break;
+                case 'Director Academico':
+                    $allowed = array_merge($allowed, [
+                        'Rector',
+                        'Administrador',
+                        'Personal',
+                        'Director Administrativo',
+                    ]);
+                    break;
+                case 'Director Administrativo':
+                    $allowed = array_merge($allowed, ['Rector', 'Administrador', 'Personal']);
+                    break;
+
+                case 'Fundador':
+                    $allowed = array_merge($allowed, [
+                        'Rector',
+                        'Administrador',
+                        'Personal',
+                        'Director Academico',
+                        'Director Administrativo',
+                    ]);
+                    break;
+                }
+        }
+
+        return array_unique($allowed);
+    }
+
     public function user(Request $request): JsonResponse
     {
-        return response()->json($request->user());
+        $user = $request->user()->load('roles');
+        $userData = $user->toArray();
+        $userData['roles'] = $user->roles->pluck('rol')->toArray();
+        return response()->json($userData);
     }
 
     public function logout(Request $request): JsonResponse
     {
-        // Revocamos el token actual
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
