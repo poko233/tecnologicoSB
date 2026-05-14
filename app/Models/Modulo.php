@@ -11,13 +11,6 @@ class Modulo extends Model
         'modulo',
         'descripcion',
         'icono',
-        'sidebar',
-        'orden',
-    ];
-
-    protected $casts = [
-        'sidebar' => 'boolean',
-        'orden'   => 'integer',
     ];
 
     /** Roles que tienen acceso directo a este módulo (modulo_rol). */
@@ -34,6 +27,6 @@ class Modulo extends Model
             'formulario_modulo',
             'id_modulo',
             'id_formulario'
-        )->orderBy('orden');
+        )->orderBy('id');
     }
 }
