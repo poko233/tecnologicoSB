@@ -8,12 +8,11 @@ use Illuminate\Support\Facades\DB;
 
 class MisModulosController extends Controller
 {
-   
     public function __invoke(): JsonResponse
     {
         $user = auth()->user();
 
-        if (! $user) {
+        if (!$user) {
             return response()->json([
                 'success' => false,
                 'message' => 'No autenticado.',
@@ -24,7 +23,7 @@ class MisModulosController extends Controller
             ->where('id_user', $user->id)
             ->first();
 
-        if (! $rol) {
+        if (!$rol) {
             return response()->json([
                 'success' => false,
                 'message' => 'El usuario no tiene un rol asignado.',
@@ -45,10 +44,33 @@ class MisModulosController extends Controller
             ->orderBy('modulo.modulo')
             ->get();
 
+        $modulosConFormularios = $modulos->map(function ($modulo) {
+            $formularios = DB::table('formulario_modulo')
+                ->join('formulario', 'formulario_modulo.id_formulario', '=', 'formulario.id')
+                ->select(
+                    'formulario.id',
+                    'formulario.formulario as nombre',
+                    'formulario.ruta',
+                    'formulario.icono',
+                    'formulario.descripcion',
+                )
+                ->where('formulario_modulo.id_modulo', $modulo->id)
+                ->orderBy('formulario.formulario')
+                ->get();
+
+            return [
+                'id'          => $modulo->id,
+                'nombre'      => $modulo->nombre,
+                'descripcion' => $modulo->descripcion,
+                'icono'       => $modulo->icono,
+                'formularios' => $formularios,
+            ];
+        });
+
         return response()->json([
             'success' => true,
             'id_rol'  => $idRol,
-            'modulos' => $modulos,
+            'modulos' => $modulosConFormularios,
         ]);
     }
 }

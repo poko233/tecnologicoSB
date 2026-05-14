@@ -12,7 +12,7 @@ class FormularioController extends Controller
 {
     public function index(): JsonResponse
     {
-        $formularios = Formulario::with(['modulos', 'permisos'])->get();
+        $formularios = Formulario::with(['modulos'])->get();
 
         return response()->json([
             'success' => true,
@@ -48,7 +48,7 @@ class FormularioController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $formulario = Formulario::with(['modulos', 'permisos'])->find($id);
+        $formulario = Formulario::with(['modulos'])->find($id);
 
         if (! $formulario) {
             return response()->json([
