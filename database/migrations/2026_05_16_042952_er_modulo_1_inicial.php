@@ -44,10 +44,10 @@ return new class extends Migration
         Schema::table('user', function (Blueprint $table) {
             // Columnas presentes en el diseño de Usuario pero
             // ausentes en la migración base de `user`
+            $table->dropColumn('apellidos');
             $table->string('apellidoPaterno', 50)->nullable()->after('nombres');
             $table->string('apellidoMaterno', 50)->nullable()->after('apellidoPaterno');
             $table->string('direccion', 50)->nullable()->after('celular');
-            $table->text('codigo_qr')->nullable()->change(); // ya existe, por si acaso
             $table->string('matricula', 15)->nullable()->after('direccion');
             $table->enum('expedido', [
                 'LPZ', 'CBBA', 'OR', 'PT', 'TJ',
@@ -412,13 +412,19 @@ return new class extends Migration
 
         // Revertir columnas añadidas a `user`
         Schema::table('user', function (Blueprint $table) {
-            $table->dropColumn([
-                'apellidoPaterno',
-                'apellidoMaterno',
-                'direccion',
-                'matricula',
-                'expedido',
-            ]);
+            $table->dropColumn(
+                collect([
+                    'apellidoPaterno',
+                    'apellidoMaterno',
+                    'direccion',
+                    'matricula',
+                    'expedido',
+                ])->filter(fn($col) => Schema::hasColumn('user', $col))->values()->all()
+            );
+
+            if (!Schema::hasColumn('user', 'apellidos')) {
+                $table->string('apellidos', 40)->nullable()->after('nombres');
+            }
         });
     }
 };
