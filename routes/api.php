@@ -1,25 +1,27 @@
 <?php
 
-use App\Http\Controllers\PlanPagoController;
-use App\Http\Controllers\CuotaController;
-use App\Http\Controllers\MatriculaController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\FormularioController;
-use App\Http\Controllers\ModuloRolController;
-use App\Http\Controllers\MisModulosController;
-
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\FormularioController;
 use App\Http\Controllers\FormularioModuloController;
 use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SidebarController;
+use App\Http\Controllers\ModuloRolController;
+use App\Http\Controllers\MisModulosController;
 
+use App\Http\Controllers\PlanPagoController;
+use App\Http\Controllers\CuotaController;
+use App\Http\Controllers\MatriculaController;
 
+use App\Http\Controllers\EstudianteController;
+use App\Http\Controllers\CarreraController;
+use App\Http\Controllers\InscripcionAcademicaController;
 
-// Rutas Públicas de Autenticación
+// Rutas públicas
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
@@ -27,39 +29,64 @@ Route::post('/password/forgot-email', [PasswordResetController::class, 'sendCode
 Route::post('/password/verify-code', [PasswordResetController::class, 'verifyCode']);
 Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']);
 
-
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('mis-modulos', MisModulosController::class);
 
     Route::get('/user', [AuthController::class, 'user']);
-
     Route::post('/logout', [AuthController::class, 'logout']);
-
-    Route::post('/register', [AuthController::class, 'register']);
 
     Route::get('/sidebar', [SidebarController::class, 'index']);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Inscripción estudiante
+    |--------------------------------------------------------------------------
+    */
+
+    Route::apiResource('estudiantes', EstudianteController::class);
+
+    Route::get('/carreras', [CarreraController::class, 'index']);
+    Route::get('/carreras/{idCarrera}/materias', [CarreraController::class, 'materias']);
+    Route::get('/materias/{idMateria}/grupos', [CarreraController::class, 'gruposPorMateria']);
+
+    Route::post('/inscripciones-academicas', [
+        InscripcionAcademicaController::class,
+        'inscribir'
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Roles y permisos
+    |--------------------------------------------------------------------------
+    */
 
     Route::apiResource('roles', RolController::class);
 
     Route::prefix('roles/{rol}/permisos')->group(function () {
-
         Route::get('/', [PermisoController::class, 'index']);
-
         Route::post('/', [PermisoController::class, 'store']);
-
         Route::put('/{permiso}', [PermisoController::class, 'update']);
-
         Route::delete('/{permiso}', [PermisoController::class, 'destroy']);
-
         Route::post('/sync', [PermisoController::class, 'sync']);
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Módulos
+    |--------------------------------------------------------------------------
+    */
 
     Route::get('modulos', [ModuloController::class, 'index']);
     Route::post('modulos', [ModuloController::class, 'store']);
     Route::get('modulos/{id}', [ModuloController::class, 'show']);
     Route::put('modulos/{id}', [ModuloController::class, 'update']);
     Route::delete('modulos/{id}', [ModuloController::class, 'destroy']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Formularios
+    |--------------------------------------------------------------------------
+    */
 
     Route::get('formularios', [FormularioController::class, 'index']);
     Route::post('formularios', [FormularioController::class, 'store']);
@@ -76,14 +103,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('modulo-rol', [ModuloRolController::class, 'store']);
     Route::delete('modulo-rol/{id}', [ModuloRolController::class, 'destroy']);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cuotas, matrícula y planes de pago
+    |--------------------------------------------------------------------------
+    */
 
     Route::get('/cuota/search', [CuotaController::class, 'search'])->name('cuota.search');
     Route::get('/cuota/estudiante/{id}', [CuotaController::class, 'show'])->name('cuota.estudiante.show');
+
     Route::post('/matricula/generar', [MatriculaController::class, 'generar'])->name('matricula.generar');
+
     Route::prefix('planes-pago')->group(function () {
-        Route::get('/', [PlanPagoController::class, 'index']);      // ?usuario_id=123
+        Route::get('/', [PlanPagoController::class, 'index']);
         Route::post('/', [PlanPagoController::class, 'store']);
         Route::delete('/{id}', [PlanPagoController::class, 'destroy']);
     });
-
 });

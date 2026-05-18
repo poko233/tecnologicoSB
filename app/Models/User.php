@@ -81,4 +81,9 @@ class User extends Authenticatable
     {
         return $this->roles()->whereIn('rol', $roles)->exists();
     }
+    // Metodos para Inscripciones
+    public function numeroReferencias()
+{
+    return $this->hasMany(NumeroReferencia::class, 'idUsuario', 'id');
+}
 }
