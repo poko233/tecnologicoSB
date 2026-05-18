@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\PlanPagoController;
+use App\Http\Controllers\CuotaController;
+use App\Http\Controllers\MatriculaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FormularioController;
 use App\Http\Controllers\ModuloRolController;
@@ -17,7 +20,7 @@ use App\Http\Controllers\SidebarController;
 
 
 // Rutas Públicas de Autenticación
-Route::post('/login',    [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
 Route::post('/password/forgot-email', [PasswordResetController::class, 'sendCode']);
@@ -31,7 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
 
     Route::post('/logout', [AuthController::class, 'logout']);
-    
+
     Route::post('/register', [AuthController::class, 'register']);
 
     Route::get('/sidebar', [SidebarController::class, 'index']);
@@ -52,25 +55,35 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/sync', [PermisoController::class, 'sync']);
     });
 
-    Route::get   ('modulos',        [ModuloController::class, 'index']);    
-    Route::post  ('modulos',        [ModuloController::class, 'store']);    
-    Route::get   ('modulos/{id}',   [ModuloController::class, 'show']);     
-    Route::put   ('modulos/{id}',   [ModuloController::class, 'update']);   
-    Route::delete('modulos/{id}',   [ModuloController::class, 'destroy']);  
- 
-    Route::get   ('formularios',        [FormularioController::class, 'index']);    
-    Route::post  ('formularios',        [FormularioController::class, 'store']);    
-    Route::get   ('formularios/{id}',   [FormularioController::class, 'show']);     
-    Route::put   ('formularios/{id}',   [FormularioController::class, 'update']);   
-    Route::delete('formularios/{id}',   [FormularioController::class, 'destroy']);
+    Route::get('modulos', [ModuloController::class, 'index']);
+    Route::post('modulos', [ModuloController::class, 'store']);
+    Route::get('modulos/{id}', [ModuloController::class, 'show']);
+    Route::put('modulos/{id}', [ModuloController::class, 'update']);
+    Route::delete('modulos/{id}', [ModuloController::class, 'destroy']);
 
-    Route::get   ('formulario-modulo',                      [FormularioModuloController::class, 'index']);       
-    Route::post  ('formulario-modulo',                      [FormularioModuloController::class, 'store']);      
-    Route::delete('formulario-modulo/{id}',                 [FormularioModuloController::class, 'destroy']);    
-    Route::get   ('formulario-modulo/modulo/{id_modulo}',   [FormularioModuloController::class, 'porModulo']); 
+    Route::get('formularios', [FormularioController::class, 'index']);
+    Route::post('formularios', [FormularioController::class, 'store']);
+    Route::get('formularios/{id}', [FormularioController::class, 'show']);
+    Route::put('formularios/{id}', [FormularioController::class, 'update']);
+    Route::delete('formularios/{id}', [FormularioController::class, 'destroy']);
 
-    Route::get   ('modulo-rol',        [ModuloRolController::class, 'index']);
-    Route::post  ('modulo-rol',        [ModuloRolController::class, 'store']);
-    Route::delete('modulo-rol/{id}',   [ModuloRolController::class, 'destroy']);
+    Route::get('formulario-modulo', [FormularioModuloController::class, 'index']);
+    Route::post('formulario-modulo', [FormularioModuloController::class, 'store']);
+    Route::delete('formulario-modulo/{id}', [FormularioModuloController::class, 'destroy']);
+    Route::get('formulario-modulo/modulo/{id_modulo}', [FormularioModuloController::class, 'porModulo']);
+
+    Route::get('modulo-rol', [ModuloRolController::class, 'index']);
+    Route::post('modulo-rol', [ModuloRolController::class, 'store']);
+    Route::delete('modulo-rol/{id}', [ModuloRolController::class, 'destroy']);
+
+
+    Route::get('/cuota/search', [CuotaController::class, 'search'])->name('cuota.search');
+    Route::get('/cuota/estudiante/{id}', [CuotaController::class, 'show'])->name('cuota.estudiante.show');
+    Route::post('/matricula/generar', [MatriculaController::class, 'generar'])->name('matricula.generar');
+    Route::prefix('planes-pago')->group(function () {
+        Route::get('/', [PlanPagoController::class, 'index']);      // ?usuario_id=123
+        Route::post('/', [PlanPagoController::class, 'store']);
+        Route::delete('/{id}', [PlanPagoController::class, 'destroy']);
+    });
 
 });

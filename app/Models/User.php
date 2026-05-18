@@ -11,50 +11,35 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
     protected $table = 'user';
+    protected $primaryKey = 'id';
+    public $timestamps = true;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'usuario',
         'password',
-        'id_rol',
         'ci',
         'nombres',
-        'apellidos',
+        'apellidoPaterno',   // ← cambio
+        'apellidoMaterno',   // ← cambio
         'genero',
         'fecha_nac',
         'email',
         'telefono',
         'celular',
+        'direccion',         // ← nuevo
+        'matricula',         // ← nuevo
+        'expedido',          // ← nuevo
         'codigo_qr',
         'verificacion',
         'foto',
         'estado',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -62,15 +47,38 @@ class User extends Authenticatable
         ];
     }
 
-    /** Roles del usuario (tabla pivote user_rol). */
+    // Relación muchos a muchos con roles (tabla user_rol)
     public function roles()
     {
         return $this->belongsToMany(Rol::class, 'user_rol', 'id_user', 'id_rol');
     }
 
-    /** Sucursales asignadas al usuario. */
+    // Relación muchos a muchos con sucursales (user_sucursal)
     public function sucursales()
     {
         return $this->belongsToMany(Sucursal::class, 'user_sucursal', 'id_user', 'id_sucursal');
+    }
+
+    // ========== NUEVAS RELACIONES (para el módulo de cuotas) ==========
+
+    public function planesPago()
+    {
+        return $this->hasMany(PlanPago::class, 'idUsuario');
+    }
+
+    public function cuotas()
+    {
+        return $this->hasMany(Cuota::class, 'idUsuario');
+    }
+
+    // Método auxiliar para verificar roles (útil en permisos)
+    public function hasRole(string $rolNombre): bool
+    {
+        return $this->roles()->where('rol', $rolNombre)->exists();
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        return $this->roles()->whereIn('rol', $roles)->exists();
     }
 }

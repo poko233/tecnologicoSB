@@ -3,45 +3,42 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Cuota extends Model
 {
     protected $table = 'Cuota';
     protected $primaryKey = 'idCuota';
+    public $timestamps = true;
 
     protected $fillable = [
+        'idPlanPago',   // puede ser null
         'idUsuario',
-        'idPlanPago',
+        'tipo',
         'monto',
         'numeroCuota',
-        'tipo',
-        'descuento',
         'fecha_vencimiento',
+        'descuento',
         'estadoCuota',
         'fecha_pago',
     ];
 
     protected $casts = [
-        'monto' => 'decimal:2',
-        'descuento' => 'decimal:2',
         'fecha_vencimiento' => 'date',
         'fecha_pago' => 'datetime',
     ];
 
-    public function usuario(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'idUsuario');
-    }
-
-    public function planPago(): BelongsTo
+    public function planPago()
     {
         return $this->belongsTo(PlanPago::class, 'idPlanPago');
     }
 
-    public function pago(): HasOne
+    public function usuario()
     {
-        return $this->hasOne(Pago::class, 'idCuota', 'idCuota');
+        return $this->belongsTo(User::class, 'idUsuario');
+    }
+
+    public function pago()
+    {
+        return $this->hasOne(Pago::class, 'idCuota');
     }
 }

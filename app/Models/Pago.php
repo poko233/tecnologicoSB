@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Pago extends Model
 {
     protected $table = 'Pago';
+    protected $primaryKey = 'id';
+    public $timestamps = true;
 
     protected $fillable = [
         'idCuota',
@@ -16,24 +17,20 @@ class Pago extends Model
         'metodo',
         'comprobante',
         'observacion',
-        'registrado_por',
+        'registrado_por'
     ];
 
-    protected $casts = [
-        'monto' => 'decimal:2',
-    ];
-
-    public function cuota(): BelongsTo
+    public function cuota()
     {
-        return $this->belongsTo(Cuota::class, 'idCuota', 'idCuota');
+        return $this->belongsTo(Cuota::class, 'idCuota');
     }
 
-    public function usuario(): BelongsTo
+    public function usuario()
     {
         return $this->belongsTo(User::class, 'idUsuario');
     }
 
-    public function registradoPor(): BelongsTo
+    public function registradoPor()
     {
         return $this->belongsTo(User::class, 'registrado_por');
     }

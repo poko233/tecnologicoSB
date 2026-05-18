@@ -20,7 +20,7 @@ return new class extends Migration {
             $table->tinyInteger('numero_cuotas')->default(11); // 1, 10, 11
             $table->decimal('monto_cuota_promocion', 10, 2)->default(0);
             $table->decimal('monto_cuota_normal', 10, 2)->default(0);
-            $table->string('matricula_numero', 15)->nullable()->unique();
+            $table->string('matricula_numero', 15)->nullable();
             $table->enum('estado', ['pendiente_matricula', 'activo', 'inactivo'])
                 ->default('pendiente_matricula');
             $table->timestamps();
