@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
@@ -19,18 +18,16 @@ class MisModulosController extends Controller
             ], 401);
         }
 
-        $rol = DB::table('user_rol')
+        $roles = DB::table('user_rol')
             ->where('id_user', $user->id)
-            ->first();
+            ->pluck('id_rol'); 
 
-        if (!$rol) {
+        if ($roles->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'El usuario no tiene un rol asignado.',
+                'message' => 'El usuario no tiene roles asignados.',
             ], 403);
         }
-
-        $idRol = $rol->id_rol;
 
         $modulos = DB::table('modulo_rol')
             ->join('modulo', 'modulo_rol.id_modulo', '=', 'modulo.id')
@@ -40,7 +37,8 @@ class MisModulosController extends Controller
                 'modulo.descripcion',
                 'modulo.icono',
             )
-            ->where('modulo_rol.id_rol', $idRol)
+            ->whereIn('modulo_rol.id_rol', $roles) 
+            ->distinct()                          
             ->orderBy('modulo.modulo')
             ->get();
 
@@ -51,7 +49,6 @@ class MisModulosController extends Controller
                     'formulario.id',
                     'formulario.formulario as nombre',
                     'formulario.ruta',
-                    'formulario.icono',
                     'formulario.descripcion',
                 )
                 ->where('formulario_modulo.id_modulo', $modulo->id)
@@ -69,7 +66,7 @@ class MisModulosController extends Controller
 
         return response()->json([
             'success' => true,
-            'id_rol'  => $idRol,
+            'roles'   => $roles,        
             'modulos' => $modulosConFormularios,
         ]);
     }
