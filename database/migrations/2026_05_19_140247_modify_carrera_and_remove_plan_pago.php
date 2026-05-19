@@ -7,15 +7,18 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // 1. Modificar tabla Carrera
+        // 1. Modificar tabla Carrera (agregar campos)
         Schema::table('Carrera', function (Blueprint $table) {
-            // Renombrar 'costo' a 'costo_matricula' para evitar confusiones
-            $table->renameColumn('costo', 'costo_matricula');
+            // Campo tipo (nuevo)
+            $table->string('tipo', 20)->nullable()->after('codigo');
 
-            // Nuevos campos
+            // costo_matricula (nuevo)
+            $table->decimal('costo_matricula', 10, 2)->default(0.00)->after('costo');
+
+            // Nuevos campos para régimen y duración
             $table->enum('regimen', ['Anual', 'Semestral', 'Mensual', 'Otro'])
                 ->default('Mensual')
-                ->after('codigo');
+                ->after('tipo');
             $table->unsignedInteger('duracion_meses')
                 ->default(0)
                 ->comment('Duración total en meses (ej: 36 para 3 años)')
@@ -32,12 +35,10 @@ return new class extends Migration {
 
         // 2. Eliminar relación con PlanPago en Cuota
         Schema::table('Cuota', function (Blueprint $table) {
-            // Verificar si existe la clave foránea antes de eliminarla
             $foreignKeys = $this->listTableForeignKeys('Cuota');
             if (in_array('cuota_idplanpago_foreign', $foreignKeys)) {
                 $table->dropForeign('cuota_idplanpago_foreign');
             }
-            // Eliminar la columna idPlanPago (si existe)
             if (Schema::hasColumn('Cuota', 'idPlanPago')) {
                 $table->dropColumn('idPlanPago');
             }
@@ -53,16 +54,13 @@ return new class extends Migration {
                 ->onUpdate('cascade');
         });
 
-        // 4. Eliminar la tabla PlanPago (después de haber roto la dependencia)
+        // 4. Eliminar la tabla PlanPago
         Schema::dropIfExists('PlanPago');
     }
 
     public function down(): void
     {
-        // Revertir: restaurar PlanPago, recuperar columna idPlanPago, quitar idCarrera
-        // y restaurar columnas de Carrera a su estado original.
-
-        // 1. Recrear tabla PlanPago (estructura original)
+        // 1. Recrear PlanPago
         Schema::create('PlanPago', function (Blueprint $table) {
             $table->id();
             $table->foreignId('idUsuario')->constrained('user')->onDelete('cascade');
@@ -77,27 +75,22 @@ return new class extends Migration {
             $table->index(['idUsuario', 'gestion']);
         });
 
-        // 2. Restaurar columna idPlanPago en Cuota (nullable)
+        // 2. Restaurar idPlanPago en Cuota
         Schema::table('Cuota', function (Blueprint $table) {
             $table->dropForeign(['idCarrera']);
             $table->dropColumn('idCarrera');
             $table->unsignedBigInteger('idPlanPago')->nullable()->after('idCuota');
-            $table->foreign('idPlanPago')
-                ->references('id')
-                ->on('PlanPago')
-                ->onDelete('cascade');
+            $table->foreign('idPlanPago')->references('id')->on('PlanPago')->onDelete('cascade');
         });
 
-        // 3. Revertir cambios en Carrera
+        // 3. Revertir cambios en Carrera (eliminar los campos añadidos)
         Schema::table('Carrera', function (Blueprint $table) {
-            $table->renameColumn('costo_matricula', 'costo');
-            $table->dropColumn(['regimen', 'duracion_meses', 'cuota_mensual', 'cuotas_por_anio']);
+            $table->dropColumn(['tipo', 'costo_matricula', 'regimen', 'duracion_meses', 'cuota_mensual', 'cuotas_por_anio']);
         });
     }
 
     /**
-     * Helper para obtener los nombres de las claves foráneas de una tabla (simple, funciona en MySQL).
-     * Si usas otro motor, ajusta según tu base de datos.
+     * Helper para obtener los nombres de las claves foráneas de una tabla (solo MySQL).
      */
     private function listTableForeignKeys(string $table): array
     {
