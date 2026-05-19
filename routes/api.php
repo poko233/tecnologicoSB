@@ -46,8 +46,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('estudiantes', EstudianteController::class);
 
     Route::get('/carreras', [CarreraController::class, 'index']);
+    Route::get('/carreras/{carrera}',            [CarreraController::class, 'show']);
     Route::get('/carreras/{idCarrera}/materias', [CarreraController::class, 'materias']);
     Route::get('/materias/{idMateria}/grupos', [CarreraController::class, 'gruposPorMateria']);
+
+    // Route::middleware('rol:1,2')->group(function () {
+        Route::post  ('/carreras',           [CarreraController::class, 'store']);
+        Route::put   ('/carreras/{carrera}', [CarreraController::class, 'update']);
+        Route::delete('/carreras/{carrera}', [CarreraController::class, 'destroy']);
+    // });
 
     Route::post('/inscripciones-academicas', [
         InscripcionAcademicaController::class,
