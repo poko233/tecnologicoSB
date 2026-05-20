@@ -47,9 +47,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('estudiantes', EstudianteController::class);
 
     Route::get('/carreras', [CarreraController::class, 'index']);
+    Route::get('/carreras/{carrera}',            [CarreraController::class, 'show']);
     Route::get('/carreras/{idCarrera}/materias', [CarreraController::class, 'materias']);
     Route::get('/materias/{idMateria}/grupos', [CarreraController::class, 'gruposPorMateria']);
     Route::post('/documentos-estudiante', [DocumentoEstudianteController::class, 'store']);
+
+    Route::middleware('rol:1,2')->group(function () {
+        Route::post  ('/carreras',           [CarreraController::class, 'store']);
+        Route::put   ('/carreras/{carrera}', [CarreraController::class, 'update']);
+        Route::delete('/carreras/{carrera}', [CarreraController::class, 'destroy']);
+    });
 
     Route::get('/documentos-estudiante/{idUsuario}', [
         DocumentoEstudianteController::class,
@@ -59,15 +66,15 @@ Route::middleware('auth:sanctum')->group(function () {
         InscripcionAcademicaController::class,
         'inscribir'  
     ]);
-Route::get('/inscripcion/resumen/{idUsuario}', [
-    ResumenInscripcionController::class,
-    'show'
-]);
+    Route::get('/inscripcion/resumen/{idUsuario}', [
+        ResumenInscripcionController::class,
+        'show'
+    ]);
 
-Route::post('/inscripcion/finalizar/{idUsuario}', [
-    ResumenInscripcionController::class,
-    'finalizar'
-]);
+    Route::post('/inscripcion/finalizar/{idUsuario}', [
+        ResumenInscripcionController::class,
+        'finalizar'
+    ]);
     /*
     |--------------------------------------------------------------------------
     | Roles y permisos
