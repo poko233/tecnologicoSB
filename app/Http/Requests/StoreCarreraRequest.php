@@ -8,7 +8,7 @@ class StoreCarreraRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // El middleware ya protege el endpoint
+        return true; 
     }
 
     public function rules(): array
@@ -16,11 +16,16 @@ class StoreCarreraRequest extends FormRequest
         return [
             'nombreCarrera'                  => 'required|string|max:50',
             'codigo'                         => 'required|string|max:50|unique:Carrera,codigo',
-            'duracion'                       => 'required|integer|min:1',
+            'tipo'                           => 'nullable|string|max:20',
+            'regimen'                        => 'nullable|in:Anual,Semestral,Mensual,Otro',
+            'duracion'                       => 'nullable|integer|min:1',
+            'duracion_meses'                 => 'nullable|integer|min:0',
             'cargaHoraria'                   => 'required|string|max:50',
-            'costo'                          => 'required|numeric|min:0',
+            'costo_matricula'                => 'nullable|numeric|min:0',
             'denominacionTitutloProfesional' => 'required|string',
-            'estadoCarrera'                  => 'in:activo,inactivo',
+            'cuota_mensual'                  => 'nullable|numeric|min:0',
+            'cuotas_por_anio'                => 'nullable|integer|min:1',
+            'estadoCarrera'                  => 'nullable|in:activo,inactivo',
             'idArea'                         => 'required|exists:Area,idArea',
         ];
     }

@@ -15,13 +15,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'rol' => \App\Http\Middleware\TieneRol::class,
         ]);
-        
-        $middleware->redirectGuestsTo(fn () => response()->json([
-            'message' => 'No autenticado'
-        ], 401));
+        // ← NO va nada más acá
     })
-    
+
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (
+            \Illuminate\Auth\AuthenticationException $e,
+            \Illuminate\Http\Request $request
+        ) {
+            return response()->json([
+                'message' => 'No autenticado'
+            ], 401);
+        });
     })
     ->create();

@@ -13,16 +13,21 @@ class UpdateCarreraRequest extends FormRequest
 
     public function rules(): array
     {
-        $idCarrera = $this->route('carrera'); // nombre del parámetro en la ruta
+        $idCarrera = $this->route('carrera');
 
         return [
             'nombreCarrera'                  => 'sometimes|required|string|max:50',
             'codigo'                         => "sometimes|required|string|max:50|unique:Carrera,codigo,{$idCarrera},idCarrera",
-            'duracion'                       => 'sometimes|required|integer|min:1',
+            'tipo'                           => 'sometimes|nullable|string|max:20',
+            'regimen'                        => 'sometimes|nullable|in:Anual,Semestral,Mensual,Otro',
+            'duracion'                       => 'sometimes|nullable|integer|min:1',
+            'duracion_meses'                 => 'sometimes|nullable|integer|min:0',
             'cargaHoraria'                   => 'sometimes|required|string|max:50',
-            'costo'                          => 'sometimes|required|numeric|min:0',
+            'costo_matricula'                => 'sometimes|nullable|numeric|min:0',
             'denominacionTitutloProfesional' => 'sometimes|required|string',
-            'estadoCarrera'                  => 'sometimes|in:activo,inactivo',
+            'cuota_mensual'                  => 'sometimes|nullable|numeric|min:0',
+            'cuotas_por_anio'                => 'sometimes|nullable|integer|min:1',
+            'estadoCarrera'                  => 'sometimes|nullable|in:activo,inactivo',
             'idArea'                         => 'sometimes|required|exists:Area,idArea',
         ];
     }
