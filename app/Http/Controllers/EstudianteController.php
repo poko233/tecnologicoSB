@@ -21,9 +21,9 @@ class EstudianteController extends Controller
             'apellidoPaterno' => 'required|string|max:50',
             'apellidoMaterno' => 'required|string|max:50',
             'nombres' => 'required|string|max:50',
-            'genero' => 'required|string|in:Masculino,Femenino,masculino,femenino',
+            'genero' => 'required|string|in:MASCULINO,FEMENINO',
             'carnet' => 'required|string|max:50|unique:user,ci',
-            'expedidoEn' => 'required|string|max:25',
+            'expedidoEn' => 'required|string|in:LPZ,CBBA,OR,PT,TJ,SCZ,BN,PD,CH,QR,EXT',
             'fechaNacimiento' => 'required|date',
             'direccion' => 'required|string|max:50',
             'celular' => 'required|string|max:20',
@@ -43,7 +43,7 @@ class EstudianteController extends Controller
             'apellidoMaterno' => $validated['apellidoMaterno'],
             'nombres' => $validated['nombres'],
 
-            'genero' => strtolower($validated['genero']),
+            'genero' => $validated['genero'],
             'fecha_nac' => $validated['fechaNacimiento'],
 
             'direccion' => $validated['direccion'],
@@ -82,9 +82,9 @@ class EstudianteController extends Controller
             'apellidoPaterno' => 'sometimes|required|string|max:50',
             'apellidoMaterno' => 'sometimes|required|string|max:50',
             'nombres' => 'sometimes|required|string|max:50',
-            'genero' => 'sometimes|required|string|in:Masculino,Femenino,masculino,femenino',
+            'genero' => 'sometimes|required|string|in:MASCULINO,FEMENINO',
             'carnet' => 'sometimes|required|string|max:50|unique:user,ci,' . $id . ',id',
-            'expedidoEn' => 'sometimes|required|string|max:25',
+            'expedidoEn' => 'sometimes|required|string|in:LPZ,CBBA,OR,PT,TJ,SCZ,BN,PD,CH,QR,EXT',
             'fechaNacimiento' => 'sometimes|required|date',
             'direccion' => 'sometimes|required|string|max:50',
             'celular' => 'sometimes|required|string|max:20',
@@ -117,7 +117,7 @@ class EstudianteController extends Controller
         }
 
         if (isset($validated['genero'])) {
-            $dataUsuario['genero'] = strtolower($validated['genero']);
+            $dataUsuario['genero'] = $validated['genero'];
         }
 
         if (isset($validated['fechaNacimiento'])) {

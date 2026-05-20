@@ -9,8 +9,8 @@ class Inscripcion extends Model
     protected $table = 'Inscripcion';
     protected $primaryKey = 'idInscripcion';
 
-    const CREATED_AT = 'create_at';
-    const UPDATED_AT = 'update_at';
+    const CREATED_AT = 'created_at';
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         'idGrupo',
