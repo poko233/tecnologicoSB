@@ -19,6 +19,8 @@ use App\Http\Controllers\MatriculaController;
 
 use App\Http\Controllers\EstudianteController;
 use App\Http\Controllers\CarreraController;
+use App\Http\Controllers\AreaController;
+use App\Http\Controllers\MateriaController;
 use App\Http\Controllers\InscripcionAcademicaController;
 use App\Http\Controllers\DocumentoEstudianteController;
 use App\Http\Controllers\ResumenInscripcionController;
@@ -46,13 +48,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('estudiantes', EstudianteController::class);
 
+    Route::get('/areas',    [AreaController::class, 'index']);
+    Route::get('/areas/{area}', [AreaController::class, 'show']);
+
     Route::get('/carreras', [CarreraController::class, 'index']);
     Route::get('/carreras/{carrera}',            [CarreraController::class, 'show']);
     Route::get('/carreras/{idCarrera}/materias', [CarreraController::class, 'materias']);
+
+    Route::get('/materias', [MateriaController::class, 'index']);
+    Route::get('/materias/{materia}', [MateriaController::class, 'show']);
     Route::get('/materias/{idMateria}/grupos', [CarreraController::class, 'gruposPorMateria']);
+
     Route::post('/documentos-estudiante', [DocumentoEstudianteController::class, 'store']);
 
     Route::middleware('rol:1,2')->group(function () {
+        Route::apiResource('areas', AreaController::class)->except(['index', 'show']);
+        Route::apiResource('materias', MateriaController::class)->except(['index', 'show']);
+
         Route::post  ('/carreras',           [CarreraController::class, 'store']);
         Route::put   ('/carreras/{carrera}', [CarreraController::class, 'update']);
         Route::delete('/carreras/{carrera}', [CarreraController::class, 'destroy']);
