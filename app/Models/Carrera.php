@@ -58,7 +58,10 @@ class Carrera extends Model
             'idCarrera'
         );
     }
-
+    public function cuotas()
+    {
+        return $this->hasMany(Cuota::class, 'idCarrera', 'idCarrera');
+    }
     // Materias de la carrera
     public function materias()
     {

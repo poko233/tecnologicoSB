@@ -13,7 +13,6 @@ use App\Http\Controllers\SidebarController;
 use App\Http\Controllers\ModuloRolController;
 use App\Http\Controllers\MisModulosController;
 
-use App\Http\Controllers\PlanPagoController;
 use App\Http\Controllers\CuotaController;
 use App\Http\Controllers\MatriculaController;
 
@@ -57,17 +56,17 @@ Route::middleware('auth:sanctum')->group(function () {
     ]);
     Route::post('/inscripciones-academicas', [
         InscripcionAcademicaController::class,
-        'inscribir'  
+        'inscribir'
     ]);
-Route::get('/inscripcion/resumen/{idUsuario}', [
-    ResumenInscripcionController::class,
-    'show'
-]);
+    Route::get('/inscripcion/resumen/{idUsuario}', [
+        ResumenInscripcionController::class,
+        'show'
+    ]);
 
-Route::post('/inscripcion/finalizar/{idUsuario}', [
-    ResumenInscripcionController::class,
-    'finalizar'
-]);
+    Route::post('/inscripcion/finalizar/{idUsuario}', [
+        ResumenInscripcionController::class,
+        'finalizar'
+    ]);
     /*
     |--------------------------------------------------------------------------
     | Roles y permisos
@@ -125,12 +124,12 @@ Route::post('/inscripcion/finalizar/{idUsuario}', [
 
     Route::get('/cuota/search', [CuotaController::class, 'search'])->name('cuota.search');
     Route::get('/cuota/estudiante/{id}', [CuotaController::class, 'show'])->name('cuota.estudiante.show');
+    // Obtener carreras en las que está inscrito un estudiante
+    Route::get('/estudiantes/{id}/carreras', [CuotaController::class, 'carreras']);
+
+    // Obtener cuotas de una carrera específica de un estudiante
+    Route::get('/estudiantes/{id}/carreras/{carreraId}/cuotas', [CuotaController::class, 'cuotasPorCarrera']);
 
     Route::post('/matricula/generar', [MatriculaController::class, 'generar'])->name('matricula.generar');
 
-    Route::prefix('planes-pago')->group(function () {
-        Route::get('/', [PlanPagoController::class, 'index']);
-        Route::post('/', [PlanPagoController::class, 'store']);
-        Route::delete('/{id}', [PlanPagoController::class, 'destroy']);
-    });
 });

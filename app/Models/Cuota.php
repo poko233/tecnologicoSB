@@ -11,8 +11,8 @@ class Cuota extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'idPlanPago',   // puede ser null
         'idUsuario',
+        'idCarrera',
         'tipo',
         'monto',
         'numeroCuota',
@@ -27,11 +27,10 @@ class Cuota extends Model
         'fecha_pago' => 'datetime',
     ];
 
-    public function planPago()
+    public function carrera()
     {
-        return $this->belongsTo(PlanPago::class, 'idPlanPago');
+        return $this->belongsTo(Carrera::class, 'idCarrera', 'idCarrera');
     }
-
     public function usuario()
     {
         return $this->belongsTo(User::class, 'idUsuario');

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -10,13 +9,9 @@ class CuotaController extends Controller
 {
     /**
      * Busca estudiantes por CI, nombre o matrícula con paginación.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
     public function search(Request $request)
     {
-        // Validar parámetros
         $request->validate([
             'search' => 'nullable|string|min:1|max:100',
             'per_page' => 'nullable|integer|min:1|max:100',
@@ -25,9 +20,9 @@ class CuotaController extends Controller
         $searchTerm = $request->input('search', '');
         $perPage = $request->input('per_page', 15);
 
-        // Subconsulta para obtener el ID del rol 'Estudiante'
+        // ID del rol 'Estudiante'
         $rolEstudianteId = DB::table('rol')
-            ->where('rol', 'Estudiante') // Ajusta el nombre exacto si es diferente (ej: 'ESTUDIANTE')
+            ->where('rol', 'Estudiante')
             ->value('id');
 
         if (!$rolEstudianteId) {
@@ -36,7 +31,6 @@ class CuotaController extends Controller
             ], 500);
         }
 
-        // Query base: usuarios que tienen el rol de estudiante
         $query = DB::table('user')
             ->join('user_rol', 'user.id', '=', 'user_rol.id_user')
             ->where('user_rol.id_rol', $rolEstudianteId)
@@ -53,16 +47,12 @@ class CuotaController extends Controller
                 'user.foto',
                 'user.estado'
             )
-            ->distinct(); // Por si un usuario tiene múltiples asignaciones de rol (aunque la migración tiene unique)
+            ->distinct();
 
-        // Aplicar búsqueda si hay término
         if (!empty($searchTerm)) {
             $query->where(function ($q) use ($searchTerm) {
-                // Búsqueda por CI
                 $q->where('user.ci', 'LIKE', "%{$searchTerm}%")
-                    // Búsqueda por matrícula
                     ->orWhere('user.matricula', 'LIKE', "%{$searchTerm}%")
-                    // Búsqueda por nombre completo (concatenando)
                     ->orWhereRaw(
                         "CONCAT(user.nombres, ' ', user.apellidoPaterno, ' ', user.apellidoMaterno) LIKE ?",
                         ["%{$searchTerm}%"]
@@ -70,10 +60,8 @@ class CuotaController extends Controller
             });
         }
 
-        // Paginar resultados
         $students = $query->paginate($perPage);
 
-        // Transformar resultados para que el frontend reciba un formato limpio
         $students->getCollection()->transform(function ($student) {
             return [
                 'id' => $student->id,
@@ -93,15 +81,13 @@ class CuotaController extends Controller
 
         return response()->json($students);
     }
+
     /**
-     * Obtener detalle completo de un estudiante (incluyendo carrera, plan de pagos y cuotas)
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
+     * Obtener información básica de un estudiante (sin planes de pago).
+     * Se mantiene por compatibilidad con el frontend actual.
      */
     public function show($id)
     {
-        // 1. Datos básicos del estudiante
         $estudiante = DB::table('user')
             ->where('id', $id)
             ->select(
@@ -128,45 +114,13 @@ class CuotaController extends Controller
             return response()->json(['message' => 'Estudiante no encontrado'], 404);
         }
 
-        // 2. Carrera actual (tomamos la primera inscripción activa, o la más reciente)
+        // Obtener la primera carrera a la que está inscrito (opcional)
         $carrera = DB::table('CarreraUsuario')
             ->join('Carrera', 'CarreraUsuario.idCarrera', '=', 'Carrera.idCarrera')
             ->where('CarreraUsuario.idUsuario', $id)
             ->select('Carrera.nombreCarrera', 'Carrera.codigo', 'Carrera.duracion')
             ->first();
 
-        // 3. Plan de pago activo (gestión actual = 2026, estado 'activo' o el más reciente)
-        $gestionActual = date('Y'); // 2026
-        $planPago = DB::table('PlanPago')
-            ->where('idUsuario', $id)
-            ->where('gestion', $gestionActual)
-            ->orderByRaw("FIELD(estado, 'activo', 'pendiente_matricula', 'inactivo')")
-            ->orderBy('id', 'desc')
-            ->first();
-
-        // Si no hay plan para la gestión actual, buscamos el más reciente de cualquier gestión
-        if (!$planPago) {
-            $planPago = DB::table('PlanPago')
-                ->where('idUsuario', $id)
-                ->orderBy('gestion', 'desc')
-                ->orderBy('id', 'desc')
-                ->first();
-        }
-
-        // 4. Determinar número de matrícula final (priorizar user.matricula, luego planPago.matricula_numero)
-        $numeroMatricula = $estudiante->user_matricula ?? ($planPago->matricula_numero ?? null);
-
-        // 5. Cuotas asociadas al plan (si existe plan)
-        $cuotas = [];
-        if ($planPago) {
-            $cuotas = DB::table('Cuota')
-                ->where('idPlanPago', $planPago->id)
-                ->orderByRaw("FIELD(tipo, 'MATRICULA', 'MENSUAL')")
-                ->orderBy('numeroCuota', 'asc')
-                ->get();
-        }
-
-        // 6. Construir respuesta
         return response()->json([
             'estudiante' => [
                 'id' => $estudiante->id,
@@ -182,7 +136,7 @@ class CuotaController extends Controller
                 'telefono' => $estudiante->telefono,
                 'celular' => $estudiante->celular,
                 'direccion' => $estudiante->direccion,
-                'matricula' => $numeroMatricula,
+                'matricula' => $estudiante->user_matricula,
                 'expedido' => $estudiante->expedido,
                 'foto' => $estudiante->foto,
                 'estado' => $estudiante->estado,
@@ -192,28 +146,50 @@ class CuotaController extends Controller
                 'codigo' => $carrera->codigo,
                 'duracion' => $carrera->duracion,
             ] : null,
-            'plan_pago' => $planPago ? [
-                'id' => $planPago->id,
-                'gestion' => $planPago->gestion,
-                'matricula_economica' => $planPago->matricula_economica,
-                'numero_cuotas' => $planPago->numero_cuotas,
-                'monto_cuota_promocion' => $planPago->monto_cuota_promocion,
-                'monto_cuota_normal' => $planPago->monto_cuota_normal,
-                'matricula_numero' => $planPago->matricula_numero,
-                'estado' => $planPago->estado,
-            ] : null,
-            'cuotas' => $cuotas->map(function ($cuota) {
-                return [
-                    'id' => $cuota->idCuota,
-                    'tipo' => $cuota->tipo,
-                    'numeroCuota' => $cuota->numeroCuota,
-                    'monto' => $cuota->monto,
-                    'descuento' => $cuota->descuento,
-                    'fecha_vencimiento' => $cuota->fecha_vencimiento,
-                    'estadoCuota' => $cuota->estadoCuota,
-                    'fecha_pago' => $cuota->fecha_pago,
-                ];
-            }),
+            // Campos obsoletos pero se dejan vacíos para no romper el frontend antiguo
+            'plan_pago' => null,
+            'cuotas' => [],
         ]);
+    }
+
+    /**
+     * Lista las carreras en las que está inscrito un estudiante.
+     * GET /estudiantes/{id}/carreras
+     */
+    public function carreras($id)
+    {
+        $carreras = DB::table('CarreraUsuario')
+            ->join('Carrera', 'CarreraUsuario.idCarrera', '=', 'Carrera.idCarrera')
+            ->where('CarreraUsuario.idUsuario', $id)
+            ->select(
+                'Carrera.idCarrera',
+                'Carrera.nombreCarrera',
+                'Carrera.codigo',
+                'Carrera.regimen',
+                'Carrera.duracion',
+                'Carrera.cuota_mensual',
+                'Carrera.costo_matricula',
+                'Carrera.costo',
+                'Carrera.cuotas_por_anio'
+            )
+            ->get();
+
+        return response()->json($carreras);
+    }
+
+    /**
+     * Obtiene las cuotas de un estudiante para una carrera específica.
+     * GET /estudiantes/{id}/carreras/{carreraId}/cuotas
+     */
+    public function cuotasPorCarrera($usuarioId, $carreraId)
+    {
+        $cuotas = DB::table('Cuota')
+            ->where('idUsuario', $usuarioId)
+            ->where('idCarrera', $carreraId)
+            ->orderByRaw("FIELD(tipo, 'MATRICULA', 'MENSUAL')")
+            ->orderBy('numeroCuota', 'asc')
+            ->get();
+
+        return response()->json($cuotas);
     }
 }

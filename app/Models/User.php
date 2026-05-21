@@ -61,11 +61,6 @@ class User extends Authenticatable
 
     // ========== NUEVAS RELACIONES (para el módulo de cuotas) ==========
 
-    public function planesPago()
-    {
-        return $this->hasMany(PlanPago::class, 'idUsuario');
-    }
-
     public function cuotas()
     {
         return $this->hasMany(Cuota::class, 'idUsuario');
