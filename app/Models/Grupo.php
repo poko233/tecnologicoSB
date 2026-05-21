@@ -2,23 +2,23 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Grupo extends Model
 {
-    protected $table      = 'Grupo';
+    use HasFactory;
+
+    protected $table = 'Grupo';
     protected $primaryKey = 'idGrupo';
-    public    $timestamps = true;
 
     protected $fillable = [
         'nombre',
         'codigo',
         'paralelo',
         'turno',
-        'hora_inicio',
-        'hora_fin',
         'gestion',
         'cupos',
         'tipo',
@@ -26,19 +26,24 @@ class Grupo extends Model
     ];
 
     protected $casts = [
-        'cupos'      => 'integer',
-        'hora_inicio' => 'datetime:H:i',
-        'hora_fin'    => 'datetime:H:i',
+        'cupos' => 'integer',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | RELACIONES
+    |--------------------------------------------------------------------------
+    */
+
+    public function horarios(): BelongsToMany
+    {
+        return $this->belongsToMany(Horario::class, 'GrupoHorario', 'idGrupo', 'idHorario')
+            ->withTimestamps();
+    }
 
     public function grupoMateriaDocentes(): HasMany
     {
         return $this->hasMany(GrupoMateriaDocente::class, 'idGrupo', 'idGrupo');
-    }
-
-    public function aulaGrupos(): HasMany
-    {
-        return $this->hasMany(AulaGrupo::class, 'idGrupo', 'idGrupo');
     }
 
     public function inscripciones(): HasMany
@@ -46,26 +51,14 @@ class Grupo extends Model
         return $this->hasMany(Inscripcion::class, 'idGrupo', 'idGrupo');
     }
 
-    public function aulas(): BelongsToMany
-    {
-        return $this->belongsToMany(Aula::class, 'AulaGrupo', 'idGrupo', 'idAula')
-            ->withTimestamps();
-    }
-
-    public function docentes(): BelongsToMany
-    {
-        return $this->belongsToMany(Docente::class, 'GrupoMateriaDocente', 'idGrupo', 'idDocente')
-            ->withPivot('idMateria')
-            ->withTimestamps();
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | SCOPES
+    |--------------------------------------------------------------------------
+    */
 
     public function scopeActivos($query)
     {
         return $query->where('estado', 'activo');
-    }
-
-    public function scopePorTurno($query, string $turno)
-    {
-        return $query->where('turno', $turno);
     }
 }

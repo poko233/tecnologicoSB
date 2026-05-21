@@ -9,7 +9,6 @@ use App\Http\Controllers\ModuloController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\RolController;
-use App\Http\Controllers\SidebarController;
 use App\Http\Controllers\ModuloRolController;
 use App\Http\Controllers\MisModulosController;
 
@@ -24,6 +23,9 @@ use App\Http\Controllers\MateriaController;
 use App\Http\Controllers\InscripcionAcademicaController;
 use App\Http\Controllers\DocumentoEstudianteController;
 use App\Http\Controllers\ResumenInscripcionController;
+use App\Http\Controllers\GrupoController;
+use App\Http\Controllers\HorarioController;
+
 // Rutas públicas
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -38,7 +40,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::get('/sidebar', [SidebarController::class, 'index']);
 
     /*
     |--------------------------------------------------------------------------
@@ -59,6 +60,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/materias/{materia}', [MateriaController::class, 'show']);
     Route::get('/materias/{idMateria}/grupos', [CarreraController::class, 'gruposPorMateria']);
 
+    Route::get('/grupos', [GrupoController::class, 'index']);
+    Route::get('/grupos/{grupo}', [GrupoController::class, 'show']);
+    Route::get('/horarios', [HorarioController::class, 'index']);
+
     Route::post('/documentos-estudiante', [DocumentoEstudianteController::class, 'store']);
 
     Route::middleware('rol:1,2')->group(function () {
@@ -68,6 +73,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post  ('/carreras',           [CarreraController::class, 'store']);
         Route::put   ('/carreras/{carrera}', [CarreraController::class, 'update']);
         Route::delete('/carreras/{carrera}', [CarreraController::class, 'destroy']);
+
+        Route::post('/grupos', [GrupoController::class, 'store']);
+        Route::put('/grupos/{grupo}', [GrupoController::class, 'update']);
+        Route::delete('/grupos/{grupo}', [GrupoController::class, 'destroy']);
+        Route::post('/horarios', [HorarioController::class, 'store']);
+        Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy']);
     });
 
     Route::get('/documentos-estudiante/{idUsuario}', [
