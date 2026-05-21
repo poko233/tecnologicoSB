@@ -2,25 +2,63 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Grupo extends Model
 {
+    use HasFactory;
+
     protected $table = 'Grupo';
     protected $primaryKey = 'idGrupo';
-
-    const CREATED_AT = 'create_at';
-    const UPDATED_AT = 'update_at';
 
     protected $fillable = [
         'nombre',
         'codigo',
         'paralelo',
         'turno',
-        'horario',
         'gestion',
         'cupos',
         'tipo',
         'estado',
     ];
+
+    protected $casts = [
+        'cupos' => 'integer',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | RELACIONES
+    |--------------------------------------------------------------------------
+    */
+
+    public function horarios(): BelongsToMany
+    {
+        return $this->belongsToMany(Horario::class, 'GrupoHorario', 'idGrupo', 'idHorario')
+            ->withTimestamps();
+    }
+
+    public function grupoMateriaDocentes(): HasMany
+    {
+        return $this->hasMany(GrupoMateriaDocente::class, 'idGrupo', 'idGrupo');
+    }
+
+    public function inscripciones(): HasMany
+    {
+        return $this->hasMany(Inscripcion::class, 'idGrupo', 'idGrupo');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | SCOPES
+    |--------------------------------------------------------------------------
+    */
+
+    public function scopeActivos($query)
+    {
+        return $query->where('estado', 'activo');
+    }
 }

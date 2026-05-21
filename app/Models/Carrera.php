@@ -15,23 +15,35 @@ class Carrera extends Model
 
     public $timestamps = true;
 
-    const CREATED_AT = 'create_at';
-    const UPDATED_AT = 'update_at';
+    const CREATED_AT = 'created_at';
+    const UPDATED_AT = 'updated_at';
+
 
     protected $fillable = [
         'nombreCarrera',
         'codigo',
-        'duracionMeses',
-        'cargaHoraria',
-        'costo',
+        'tipo',
         'regimen',
-        'denominacionTituloProfesional',
-        'cuotaMes',
-        'numeroCuotas',
+        'duracion',
+        'duracion_meses',
+        'cargaHoraria',
+        'costo_matricula',
+        'denominacionTitutloProfesional',  
+        'cuota_mensual',
+        'cuotas_por_anio',
         'estadoCarrera',
         'idArea',
     ];
+    protected static function boot()
+    {
+        parent::boot();
 
+        static::saving(function ($carrera) {
+            $carrera->costo = 
+                (($carrera->costo_matricula ?? 0) * ($carrera->duracion ?? 0)) +
+                (($carrera->duracion_meses ?? 0) * ($carrera->cuota_mensual ?? 0));
+        });
+    }
     protected $casts = [
         'costo' => 'decimal:2',
         'cuotaMes' => 'decimal:2',
