@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Carrera;
 use App\Models\Docente;
 use App\Models\Grupo;
 use App\Models\GrupoMateriaDocente;
@@ -13,30 +14,36 @@ class AsignacionDocenteController extends Controller
 {
     public function index()
     {
-        $materias = Materia::orderBy('semestre')
-            ->orderBy('nombreMateria')
+        $carreras = Carrera::orderBy('nombreCarrera')->get();
+
+        $materias = Materia::select('Materia.*', 'CarreraMateria.idCarrera')
+            ->join('CarreraMateria', 'CarreraMateria.idMateria', '=', 'Materia.idMateria')
+            ->orderBy('CarreraMateria.idCarrera')
+            ->orderBy('Materia.semestre')
+            ->orderBy('Materia.nombreMateria')
             ->get();
 
         $grupos = Grupo::orderBy('idGrupo')->get();
 
-       $docentes = Docente::with(['usuario.roles'])
-    ->where('estadoDocente', 'activo')
-    ->whereHas('usuario.roles', function ($query) {
-        $query->where('rol.id', 3);
-    })
-    ->orderBy('profesion')
-    ->get();
+        $docentes = Docente::with(['usuario.roles'])
+            ->where('estadoDocente', 'activo')
+            ->whereHas('usuario.roles', function ($query) {
+                $query->where('rol.id', 3);
+            })
+            ->orderBy('profesion')
+            ->get();
 
         $asignaciones = GrupoMateriaDocente::with([
-                'materia',
-                'grupo',
-                'docente.usuario',
-            ])
+            'materia',
+            'grupo',
+            'docente.usuario',
+        ])
             ->orderBy('idMateria')
             ->orderBy('idGrupo')
             ->get();
 
         return response()->json([
+            'carreras' => $carreras,
             'materias' => $materias,
             'grupos' => $grupos,
             'docentes' => $docentes,
@@ -55,11 +62,14 @@ class AsignacionDocenteController extends Controller
 
         $docente = Docente::where('idDocente', $validated['idDocente'])
             ->where('estadoDocente', 'activo')
+            ->whereHas('usuario.roles', function ($query) {
+                $query->where('rol.id', 3);
+            })
             ->first();
 
         if (!$docente) {
             return response()->json([
-                'message' => 'El docente seleccionado está inactivo o no existe.',
+                'message' => 'El docente seleccionado está inactivo, no existe o no tiene el rol Docente.',
             ], 422);
         }
 
