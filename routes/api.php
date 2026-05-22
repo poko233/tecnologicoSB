@@ -92,7 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/asignacion-docente', [AsignacionDocenteController::class, 'index']);
     Route::post('/asignacion-docente', [AsignacionDocenteController::class, 'guardar']);
-    Route::delete('/asignacion-docente/materia/{idMateria}', [AsignacionDocenteController::class, 'eliminarPorMateria']);
+    Route::delete('/asignacion-docente/materia/{idMateria}', [AsignacionDocenteController::class, 'eliminarPorMateria']);Route::delete('/asignacion-docente/{idMateria}/{idDocente}', [AsignacionDocenteController::class, 'eliminarAsignacion']);
 
     Route::middleware('rol:1,2')->group(function () {
         Route::apiResource('areas', AreaController::class)->except(['index', 'show']);

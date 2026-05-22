@@ -52,43 +52,57 @@ class AsignacionDocenteController extends Controller
     }
 
     public function guardar(Request $request)
-    {
-        $validated = $request->validate([
-            'idMateria' => 'required|integer|exists:Materia,idMateria',
-            'idDocente' => 'required|integer|exists:Docente,idDocente',
-            'grupos' => 'required|array|min:1',
-            'grupos.*' => 'required|integer|exists:Grupo,idGrupo',
-        ]);
+{
+    $validated = $request->validate([
+        'idMateria' => 'required|integer|exists:Materia,idMateria',
+        'idDocente' => 'required|integer|exists:Docente,idDocente',
+        'grupos' => 'required|array|min:1',
+        'grupos.*' => 'required|integer|exists:Grupo,idGrupo',
+    ]);
 
-        $docente = Docente::where('idDocente', $validated['idDocente'])
-            ->where('estadoDocente', 'activo')
-            ->whereHas('usuario.roles', function ($query) {
-                $query->where('rol.id', 3);
-            })
-            ->first();
+    $docente = Docente::where('idDocente', $validated['idDocente'])
+        ->where('estadoDocente', 'activo')
+        ->whereHas('usuario.roles', function ($query) {
+            $query->where('rol.id', 3);
+        })
+        ->first();
 
-        if (!$docente) {
-            return response()->json([
-                'message' => 'El docente seleccionado está inactivo, no existe o no tiene el rol Docente.',
-            ], 422);
-        }
+    if (!$docente) {
+        return response()->json([
+            'message' => 'El docente seleccionado está inactivo, no existe o no tiene el rol Docente.',
+        ], 422);
+    }
 
-        DB::transaction(function () use ($validated) {
-            GrupoMateriaDocente::where('idMateria', $validated['idMateria'])->delete();
+    DB::transaction(function () use ($validated) {
 
-            foreach ($validated['grupos'] as $idGrupo) {
+        foreach ($validated['grupos'] as $idGrupo) {
+
+            $existe = GrupoMateriaDocente::where(
+                'idMateria',
+                $validated['idMateria']
+            )
+                ->where(
+                    'idDocente',
+                    $validated['idDocente']
+                )
+                ->where('idGrupo', $idGrupo)
+                ->exists();
+
+            if (!$existe) {
+
                 GrupoMateriaDocente::create([
                     'idMateria' => $validated['idMateria'],
                     'idDocente' => $validated['idDocente'],
                     'idGrupo' => $idGrupo,
                 ]);
             }
-        });
+        }
+    });
 
-        return response()->json([
-            'message' => 'Asignación guardada correctamente',
-        ]);
-    }
+    return response()->json([
+        'message' => 'Asignación guardada correctamente',
+    ]);
+}
 
     public function eliminarPorMateria($idMateria)
     {
@@ -98,4 +112,15 @@ class AsignacionDocenteController extends Controller
             'message' => 'Asignación eliminada correctamente',
         ]);
     }
+
+    public function eliminarAsignacion($idMateria, $idDocente)
+{
+    GrupoMateriaDocente::where('idMateria', $idMateria)
+        ->where('idDocente', $idDocente)
+        ->delete();
+
+    return response()->json([
+        'message' => 'Asignación eliminada correctamente',
+    ]);
+}
 }
