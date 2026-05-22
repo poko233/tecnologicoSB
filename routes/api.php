@@ -84,6 +84,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/documentos-estudiante', [DocumentoEstudianteController::class, 'store']);
 
+    Route::post('/estudiantes/verificar-datos', [EstudianteController::class, 'verificarDatos']);
+    Route::apiResource('estudiantes', EstudianteController::class);
     /*
     |--------------------------------------------------------------------------
     | Asignación de docentes a materias y grupos
