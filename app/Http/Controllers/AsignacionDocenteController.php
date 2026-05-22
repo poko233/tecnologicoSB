@@ -19,10 +19,13 @@ class AsignacionDocenteController extends Controller
 
         $grupos = Grupo::orderBy('idGrupo')->get();
 
-        $docentes = Docente::with('usuario')
-            ->where('estadoDocente', 'activo')
-            ->orderBy('profesion')
-            ->get();
+       $docentes = Docente::with(['usuario.roles'])
+    ->where('estadoDocente', 'activo')
+    ->whereHas('usuario.roles', function ($query) {
+        $query->where('rol.id', 3);
+    })
+    ->orderBy('profesion')
+    ->get();
 
         $asignaciones = GrupoMateriaDocente::with([
                 'materia',
