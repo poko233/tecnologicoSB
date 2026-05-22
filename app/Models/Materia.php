@@ -60,4 +60,12 @@ class Materia extends Model
         return $query->where('nombreMateria', 'like', "%{$termino}%")
             ->orWhere('codigo', 'like', "%{$termino}%");
     }
+    public function asignacionesDocentes(): HasMany
+{
+    return $this->hasMany(
+        GrupoMateriaDocente::class,
+        'idMateria',
+        'idMateria'
+    );
+}
 }
