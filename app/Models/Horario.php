@@ -19,9 +19,20 @@ class Horario extends Model
         'dia',
     ];
 
+    protected $casts = [
+        'horaInicio' => 'datetime:H:i',
+        'horaFin' => 'datetime:H:i',
+    ];
+
     public function grupos(): BelongsToMany
     {
-        return $this->belongsToMany(Grupo::class, 'GrupoHorario', 'idHorario', 'idGrupo')
+        return $this->belongsToMany(
+            Grupo::class,
+            'GrupoHorario',
+            'idHorario',
+            'idGrupo'
+        )
+            ->withPivot('idGrupoHorario')
             ->withTimestamps();
     }
 }

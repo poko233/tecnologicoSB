@@ -89,4 +89,78 @@ class MateriaController extends Controller
 
         return response()->json(['message' => 'Materia desactivada correctamente.']);
     }
+    public function gruposPorMateria(string $idMateria): JsonResponse
+{
+    $gruposBase = DB::table('GrupoMateriaDocente as gmd')
+        ->join('Grupo as g', 'g.idGrupo', '=', 'gmd.idGrupo')
+        ->select(
+            'g.idGrupo',
+            'g.nombre as nombreGrupo',
+            'g.nombre',
+            'g.codigo',
+            'g.paralelo',
+            'g.turno',
+            'g.gestion',
+            'g.cupos as capacidad',
+            'g.cupos',
+            'g.tipo',
+            'g.estado',
+            'gmd.idMateria',
+            'gmd.idDocente'
+        )
+        ->where('gmd.idMateria', $idMateria)
+        ->where('g.estado', 'activo')
+        ->distinct()
+        ->orderBy('g.idGrupo')
+        ->get();
+
+    $idsGrupos = $gruposBase->pluck('idGrupo')->unique()->values();
+
+    $horarios = DB::table('GrupoHorario as gh')
+        ->join('Horario as h', 'h.idHorario', '=', 'gh.idHorario')
+        ->select(
+            'gh.idGrupo',
+            'h.idHorario',
+            'h.dia',
+            'h.horaInicio',
+            'h.horaFin'
+        )
+        ->whereIn('gh.idGrupo', $idsGrupos)
+        ->orderByRaw("
+            CASE h.dia
+                WHEN 'Lunes' THEN 1
+                WHEN 'Martes' THEN 2
+                WHEN 'Miércoles' THEN 3
+                WHEN 'Miercoles' THEN 3
+                WHEN 'Jueves' THEN 4
+                WHEN 'Viernes' THEN 5
+                WHEN 'Sábado' THEN 6
+                WHEN 'Sabado' THEN 6
+                WHEN 'Domingo' THEN 7
+                ELSE 8
+            END
+        ")
+        ->orderBy('h.horaInicio')
+        ->get()
+        ->groupBy('idGrupo');
+
+    $grupos = $gruposBase->map(function ($grupo) use ($horarios) {
+        $grupo->horarios = $horarios->get($grupo->idGrupo, collect())
+            ->map(function ($horario) {
+                return [
+                    'idHorario' => $horario->idHorario,
+                    'dia' => $horario->dia,
+                    'horaInicio' => substr($horario->horaInicio, 0, 5),
+                    'horaFin' => substr($horario->horaFin, 0, 5),
+                ];
+            })
+            ->values();
+
+        return $grupo;
+    });
+
+    return response()->json([
+        'grupos' => $grupos,
+    ]);
+}
 }

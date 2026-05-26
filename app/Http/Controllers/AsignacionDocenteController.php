@@ -23,7 +23,27 @@ class AsignacionDocenteController extends Controller
             ->orderBy('Materia.nombreMateria')
             ->get();
 
-        $grupos = Grupo::orderBy('idGrupo')->get();
+        $grupos = Grupo::with(['horarios' => function ($query) {
+                $query
+                    ->orderByRaw("
+                        CASE dia
+                            WHEN 'Lunes' THEN 1
+                            WHEN 'Martes' THEN 2
+                            WHEN 'Miércoles' THEN 3
+                            WHEN 'Miercoles' THEN 3
+                            WHEN 'Jueves' THEN 4
+                            WHEN 'Viernes' THEN 5
+                            WHEN 'Sábado' THEN 6
+                            WHEN 'Sabado' THEN 6
+                            WHEN 'Domingo' THEN 7
+                            ELSE 8
+                        END
+                    ")
+                    ->orderBy('horaInicio');
+            }])
+            ->where('estado', 'activo')
+            ->orderBy('idGrupo')
+            ->get();
 
         $docentes = Docente::with(['usuario.roles'])
             ->where('estadoDocente', 'activo')
@@ -34,10 +54,13 @@ class AsignacionDocenteController extends Controller
             ->get();
 
         $asignaciones = GrupoMateriaDocente::with([
-            'materia',
-            'grupo',
-            'docente.usuario',
-        ])
+                'materia',
+                'grupo.horarios',
+                'docente.usuario',
+            ])
+            ->whereHas('grupo', function ($query) {
+                $query->where('estado', 'activo');
+            })
             ->orderBy('idMateria')
             ->orderBy('idGrupo')
             ->get();
@@ -52,57 +75,59 @@ class AsignacionDocenteController extends Controller
     }
 
     public function guardar(Request $request)
-{
-    $validated = $request->validate([
-        'idMateria' => 'required|integer|exists:Materia,idMateria',
-        'idDocente' => 'required|integer|exists:Docente,idDocente',
-        'grupos' => 'required|array|min:1',
-        'grupos.*' => 'required|integer|exists:Grupo,idGrupo',
-    ]);
+    {
+        $validated = $request->validate([
+            'idMateria' => 'required|integer|exists:Materia,idMateria',
+            'idDocente' => 'required|integer|exists:Docente,idDocente',
+            'grupos' => 'required|array|min:1',
+            'grupos.*' => 'required|integer|exists:Grupo,idGrupo',
+        ]);
 
-    $docente = Docente::where('idDocente', $validated['idDocente'])
-        ->where('estadoDocente', 'activo')
-        ->whereHas('usuario.roles', function ($query) {
-            $query->where('rol.id', 3);
-        })
-        ->first();
+        $docente = Docente::where('idDocente', $validated['idDocente'])
+            ->where('estadoDocente', 'activo')
+            ->whereHas('usuario.roles', function ($query) {
+                $query->where('rol.id', 3);
+            })
+            ->first();
 
-    if (!$docente) {
-        return response()->json([
-            'message' => 'El docente seleccionado está inactivo, no existe o no tiene el rol Docente.',
-        ], 422);
-    }
-
-    DB::transaction(function () use ($validated) {
-
-        foreach ($validated['grupos'] as $idGrupo) {
-
-            $existe = GrupoMateriaDocente::where(
-                'idMateria',
-                $validated['idMateria']
-            )
-                ->where(
-                    'idDocente',
-                    $validated['idDocente']
-                )
-                ->where('idGrupo', $idGrupo)
-                ->exists();
-
-            if (!$existe) {
-
-                GrupoMateriaDocente::create([
-                    'idMateria' => $validated['idMateria'],
-                    'idDocente' => $validated['idDocente'],
-                    'idGrupo' => $idGrupo,
-                ]);
-            }
+        if (!$docente) {
+            return response()->json([
+                'message' => 'El docente seleccionado está inactivo, no existe o no tiene el rol Docente.',
+            ], 422);
         }
-    });
 
-    return response()->json([
-        'message' => 'Asignación guardada correctamente',
-    ]);
-}
+        $gruposActivos = Grupo::whereIn('idGrupo', $validated['grupos'])
+            ->where('estado', 'activo')
+            ->pluck('idGrupo')
+            ->toArray();
+
+        if (count($gruposActivos) !== count($validated['grupos'])) {
+            return response()->json([
+                'message' => 'Uno o más grupos seleccionados están inactivos o no existen.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($validated, $gruposActivos) {
+            foreach ($gruposActivos as $idGrupo) {
+                $existe = GrupoMateriaDocente::where('idMateria', $validated['idMateria'])
+                    ->where('idDocente', $validated['idDocente'])
+                    ->where('idGrupo', $idGrupo)
+                    ->exists();
+
+                if (!$existe) {
+                    GrupoMateriaDocente::create([
+                        'idMateria' => $validated['idMateria'],
+                        'idDocente' => $validated['idDocente'],
+                        'idGrupo' => $idGrupo,
+                    ]);
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => 'Asignación guardada correctamente',
+        ]);
+    }
 
     public function eliminarPorMateria($idMateria)
     {
@@ -114,13 +139,13 @@ class AsignacionDocenteController extends Controller
     }
 
     public function eliminarAsignacion($idMateria, $idDocente)
-{
-    GrupoMateriaDocente::where('idMateria', $idMateria)
-        ->where('idDocente', $idDocente)
-        ->delete();
+    {
+        GrupoMateriaDocente::where('idMateria', $idMateria)
+            ->where('idDocente', $idDocente)
+            ->delete();
 
-    return response()->json([
-        'message' => 'Asignación eliminada correctamente',
-    ]);
-}
+        return response()->json([
+            'message' => 'Asignación eliminada correctamente',
+        ]);
+    }
 }

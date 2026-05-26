@@ -29,15 +29,15 @@ class Grupo extends Model
         'cupos' => 'integer',
     ];
 
-    /*
-    |--------------------------------------------------------------------------
-    | RELACIONES
-    |--------------------------------------------------------------------------
-    */
-
     public function horarios(): BelongsToMany
     {
-        return $this->belongsToMany(Horario::class, 'GrupoHorario', 'idGrupo', 'idHorario')
+        return $this->belongsToMany(
+            Horario::class,
+            'GrupoHorario',
+            'idGrupo',
+            'idHorario'
+        )
+            ->withPivot('idGrupoHorario')
             ->withTimestamps();
     }
 
@@ -50,12 +50,6 @@ class Grupo extends Model
     {
         return $this->hasMany(Inscripcion::class, 'idGrupo', 'idGrupo');
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | SCOPES
-    |--------------------------------------------------------------------------
-    */
 
     public function scopeActivos($query)
     {
