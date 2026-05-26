@@ -1,0 +1,151 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Carrera;
+use App\Models\Docente;
+use App\Models\Grupo;
+use App\Models\GrupoMateriaDocente;
+use App\Models\Materia;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class AsignacionDocenteController extends Controller
+{
+    public function index()
+    {
+        $carreras = Carrera::orderBy('nombreCarrera')->get();
+
+        $materias = Materia::select('Materia.*', 'CarreraMateria.idCarrera')
+            ->join('CarreraMateria', 'CarreraMateria.idMateria', '=', 'Materia.idMateria')
+            ->orderBy('CarreraMateria.idCarrera')
+            ->orderBy('Materia.semestre')
+            ->orderBy('Materia.nombreMateria')
+            ->get();
+
+        $grupos = Grupo::with(['horarios' => function ($query) {
+                $query
+                    ->orderByRaw("
+                        CASE dia
+                            WHEN 'Lunes' THEN 1
+                            WHEN 'Martes' THEN 2
+                            WHEN 'Miércoles' THEN 3
+                            WHEN 'Miercoles' THEN 3
+                            WHEN 'Jueves' THEN 4
+                            WHEN 'Viernes' THEN 5
+                            WHEN 'Sábado' THEN 6
+                            WHEN 'Sabado' THEN 6
+                            WHEN 'Domingo' THEN 7
+                            ELSE 8
+                        END
+                    ")
+                    ->orderBy('horaInicio');
+            }])
+            ->where('estado', 'activo')
+            ->orderBy('idGrupo')
+            ->get();
+
+        $docentes = Docente::with(['usuario.roles'])
+            ->where('estadoDocente', 'activo')
+            ->whereHas('usuario.roles', function ($query) {
+                $query->where('rol.id', 3);
+            })
+            ->orderBy('profesion')
+            ->get();
+
+        $asignaciones = GrupoMateriaDocente::with([
+                'materia',
+                'grupo.horarios',
+                'docente.usuario',
+            ])
+            ->whereHas('grupo', function ($query) {
+                $query->where('estado', 'activo');
+            })
+            ->orderBy('idMateria')
+            ->orderBy('idGrupo')
+            ->get();
+
+        return response()->json([
+            'carreras' => $carreras,
+            'materias' => $materias,
+            'grupos' => $grupos,
+            'docentes' => $docentes,
+            'asignaciones' => $asignaciones,
+        ]);
+    }
+
+    public function guardar(Request $request)
+    {
+        $validated = $request->validate([
+            'idMateria' => 'required|integer|exists:Materia,idMateria',
+            'idDocente' => 'required|integer|exists:Docente,idDocente',
+            'grupos' => 'required|array|min:1',
+            'grupos.*' => 'required|integer|exists:Grupo,idGrupo',
+        ]);
+
+        $docente = Docente::where('idDocente', $validated['idDocente'])
+            ->where('estadoDocente', 'activo')
+            ->whereHas('usuario.roles', function ($query) {
+                $query->where('rol.id', 3);
+            })
+            ->first();
+
+        if (!$docente) {
+            return response()->json([
+                'message' => 'El docente seleccionado está inactivo, no existe o no tiene el rol Docente.',
+            ], 422);
+        }
+
+        $gruposActivos = Grupo::whereIn('idGrupo', $validated['grupos'])
+            ->where('estado', 'activo')
+            ->pluck('idGrupo')
+            ->toArray();
+
+        if (count($gruposActivos) !== count($validated['grupos'])) {
+            return response()->json([
+                'message' => 'Uno o más grupos seleccionados están inactivos o no existen.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($validated, $gruposActivos) {
+            foreach ($gruposActivos as $idGrupo) {
+                $existe = GrupoMateriaDocente::where('idMateria', $validated['idMateria'])
+                    ->where('idDocente', $validated['idDocente'])
+                    ->where('idGrupo', $idGrupo)
+                    ->exists();
+
+                if (!$existe) {
+                    GrupoMateriaDocente::create([
+                        'idMateria' => $validated['idMateria'],
+                        'idDocente' => $validated['idDocente'],
+                        'idGrupo' => $idGrupo,
+                    ]);
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => 'Asignación guardada correctamente',
+        ]);
+    }
+
+    public function eliminarPorMateria($idMateria)
+    {
+        GrupoMateriaDocente::where('idMateria', $idMateria)->delete();
+
+        return response()->json([
+            'message' => 'Asignación eliminada correctamente',
+        ]);
+    }
+
+    public function eliminarAsignacion($idMateria, $idDocente)
+    {
+        GrupoMateriaDocente::where('idMateria', $idMateria)
+            ->where('idDocente', $idDocente)
+            ->delete();
+
+        return response()->json([
+            'message' => 'Asignación eliminada correctamente',
+        ]);
+    }
+}
