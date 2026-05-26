@@ -11,7 +11,6 @@ class Pago extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'idCuota',
         'idUsuario',
         'monto',
         'metodo',
@@ -20,9 +19,11 @@ class Pago extends Model
         'registrado_por'
     ];
 
-    public function cuota()
+    public function cuotas()
     {
-        return $this->belongsTo(Cuota::class, 'idCuota');
+        return $this->belongsToMany(Cuota::class, 'pago_cuota', 'idPago', 'idCuota')
+                    ->withPivot('monto_pagado')
+                    ->withTimestamps();
     }
 
     public function usuario()

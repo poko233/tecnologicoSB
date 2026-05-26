@@ -9,9 +9,9 @@ use Carbon\Carbon;
 class PagoService
 {
     /**
-     * Registrar un pago para una cuota.
+     * Registrar un pago para una o varias cuotas.
      *
-     * @param int $cuotaId
+     * @param int|array $cuotaIds
      * @param int $usuarioId (estudiante)
      * @param float $monto
      * @param string $metodo (EFECTIVO, TRANSFERENCIA, TARJETA, QR)
@@ -21,7 +21,7 @@ class PagoService
      * @return Pago
      */
     public static function registrarPago(
-        int $cuotaId,
+        $cuotaIds,
         int $usuarioId,
         float $monto,
         string $metodo,
@@ -29,23 +29,38 @@ class PagoService
         ?string $comprobante = null,
         ?string $observacion = null
     ): Pago {
-        // Crear el pago
-        $pago = Pago::create([
-            'idCuota' => $cuotaId,
-            'idUsuario' => $usuarioId,
-            'monto' => $monto,
-            'metodo' => $metodo,
-            'comprobante' => $comprobante,
-            'observacion' => $observacion,
-            'registrado_por' => $registradoPor,
-        ]);
+        $ids = (array) $cuotaIds;
 
-        // Actualizar estado de la cuota a Pagado y registrar fecha de pago
-        Cuota::where('idCuota', $cuotaId)->update([
-            'estadoCuota' => 'Pagado',
-            'fecha_pago' => Carbon::now(),
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($ids, $usuarioId, $monto, $metodo, $registradoPor, $comprobante, $observacion) {
+            // Crear el pago
+            $pago = Pago::create([
+                'idUsuario' => $usuarioId,
+                'monto' => $monto,
+                'metodo' => $metodo,
+                'comprobante' => $comprobante,
+                'observacion' => $observacion,
+                'registrado_por' => $registradoPor,
+            ]);
 
-        return $pago;
+            // Obtener las cuotas correspondientes
+            $cuotas = Cuota::whereIn('idCuota', $ids)->get();
+
+            foreach ($cuotas as $cuota) {
+                // Actualizar estado de la cuota a Pagado y registrar fecha de pago
+                $cuota->update([
+                    'estadoCuota' => 'Pagado',
+                    'fecha_pago' => Carbon::now(),
+                ]);
+
+                // Registrar en la tabla pivote pago_cuota
+                $pago->cuotas()->attach($cuota->idCuota, [
+                    'monto_pagado' => $cuota->monto,
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]);
+            }
+
+            return $pago->load('cuotas');
+        });
     }
 }

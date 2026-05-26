@@ -14,6 +14,7 @@ use App\Http\Controllers\MisModulosController;
 
 use App\Http\Controllers\CuotaController;
 use App\Http\Controllers\MatriculaController;
+use App\Http\Controllers\PagoController;
 
 use App\Http\Controllers\EstudianteController;
 use App\Http\Controllers\CarreraController;
@@ -161,5 +162,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/estudiantes/{id}/carreras/{carreraId}/cuotas', [CuotaController::class, 'cuotasPorCarrera']);
 
     Route::post('/matricula/generar', [MatriculaController::class, 'generar'])->name('matricula.generar');
+
+    // Registro y consulta de pagos (Multicuota Muchos a Muchos)
+    Route::post('/pagos', [PagoController::class, 'store'])->name('pagos.store');
+    Route::get('/pagos', [PagoController::class, 'index'])->name('pagos.index');
 
 });
