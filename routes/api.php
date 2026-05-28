@@ -105,7 +105,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/documentos-estudiante', [DocumentoEstudianteController::class, 'store']);
 
     Route::post('/estudiantes/verificar-datos', [EstudianteController::class, 'verificarDatos']);
-    Route::apiResource('estudiantes', EstudianteController::class);
     Route::get('/materias/{idMateria}/grupos', [MateriaController::class, 'gruposPorMateria']);
     /*
     |--------------------------------------------------------------------------
