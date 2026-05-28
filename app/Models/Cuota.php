@@ -36,8 +36,17 @@ class Cuota extends Model
         return $this->belongsTo(User::class, 'idUsuario');
     }
 
+    public function pagos()
+    {
+        return $this->belongsToMany(Pago::class, 'pago_cuota', 'idCuota', 'idPago')
+                    ->withPivot('monto_pagado')
+                    ->withTimestamps();
+    }
+
     public function pago()
     {
-        return $this->hasOne(Pago::class, 'idCuota');
+        return $this->belongsToMany(Pago::class, 'pago_cuota', 'idCuota', 'idPago')
+                    ->latest()
+                    ->limit(1);
     }
 }
