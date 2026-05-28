@@ -27,6 +27,7 @@ use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\AsignacionDocenteController;
 use App\Http\Controllers\DocenteController;
+use App\Http\Controllers\QrController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,6 +43,24 @@ Route::post('/password/verify-code', [PasswordResetController::class, 'verifyCod
 Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']);
 
 Route::middleware('auth:sanctum')->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | QR — Desencriptación, Asistencia y Control de Acceso
+    |--------------------------------------------------------------------------
+    */
+
+    // Cualquier usuario autenticado puede desencriptar un QR
+    Route::post('/qr/decrypt', [QrController::class, 'decrypt']);
+
+    // Solo Docentes pueden registrar asistencia
+    Route::post('/qr/asistencia', [QrController::class, 'asistencia'])
+        ->middleware('role:Docente');
+
+    // Solo personal de control de acceso puede verificar ingreso
+    Route::post('/qr/verify-access', [QrController::class, 'verifyAccess'])
+        ->middleware('role:Administrador,Portero,Seguridad');
+
     Route::get('mis-modulos', MisModulosController::class);
 
     Route::get('/user', [AuthController::class, 'user']);
