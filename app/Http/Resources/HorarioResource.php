@@ -10,11 +10,11 @@ class HorarioResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'idHorario'     => $this->idHorario,
-            'horaInicio'    => $this->horaInicio,
-            'horaFin'       => $this->horaFin,
-            'dia'           => $this->dia,
-            'creadoEn'      => $this->created_at?->toDateTimeString(),
+            'idHorario' => $this->idHorario,
+            'horaInicio' => substr((string) $this->horaInicio, 0, 5),
+            'horaFin' => substr((string) $this->horaFin, 0, 5),
+            'dia' => $this->dia,
+            'creadoEn' => $this->created_at?->toDateTimeString(),
             'actualizadoEn' => $this->updated_at?->toDateTimeString(),
         ];
     }
