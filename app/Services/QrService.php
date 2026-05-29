@@ -3,6 +3,12 @@
 namespace App\Services;
 
 use RuntimeException;
+use BaconQrCode\Encoder\Encoder;
+use BaconQrCode\Common\ErrorCorrectionLevel;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Writer;
 
 class QrService
 {
@@ -19,7 +25,6 @@ class QrService
             );
         }
 
-        // Convertir hex → binario (32 bytes reales para AES-256)
         $this->key = hex2bin($hexKey);
     }
 
@@ -30,7 +35,7 @@ class QrService
     public function encrypt(int $userId, int $version = 1): string
     {
         $payload = json_encode(['user_id' => $userId, 'v' => $version]);
-        $iv      = random_bytes(16);
+        $iv = random_bytes(16);
 
         $ciphertext = openssl_encrypt(
             $payload,
@@ -48,21 +53,64 @@ class QrService
     }
 
     /**
-     * Encripta el payload QR y genera una imagen QR en formato data URI (base64).
-     * Devuelve 'data:image/svg+xml;base64,' . base64(svg_content)
+     * Genera una imagen PNG del QR a partir del ID del usuario.
+     * Usa GD (nativo) para dibujar la matriz obtenida con BaconQrCode.
+     * Devuelve 'data:image/png;base64,...'
      */
     public function generateQrImage(int $userId, int $version = 1): string
     {
         $encryptedText = $this->encrypt($userId, $version);
 
-        $renderer = new \BaconQrCode\Renderer\ImageRenderer(
-            new \BaconQrCode\Renderer\RendererStyle\RendererStyle(400),
-            new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+        // 1. Obtener la matriz de módulos del QR
+        $qrCode = Encoder::encode(
+            $encryptedText,
+            ErrorCorrectionLevel::M(),
+            'UTF-8'
         );
-        $writer = new \BaconQrCode\Writer($renderer);
-        $svgData = $writer->writeString($encryptedText);
+        $matrix = $qrCode->getMatrix();
+        $moduleCount = $matrix->getWidth(); // Número de módulos por lado
 
-        return 'data:image/svg+xml;base64,' . base64_encode($svgData);
+        // 2. Configurar tamaño de la imagen y margen
+        $imageSize = 500;          // Tamaño en píxeles de la imagen final
+        $marginModules = 1;        // Módulos de margen (quiet zone)
+        $totalModules = $moduleCount + 2 * $marginModules;
+        $modulePixel = floor($imageSize / $totalModules); // Tamaño de cada módulo en px
+        $imageSizeAdjusted = $modulePixel * $totalModules; // Ajuste exacto
+
+        // 3. Crear imagen GD
+        $img = imagecreatetruecolor($imageSizeAdjusted, $imageSizeAdjusted);
+        // Colores
+        $white = imagecolorallocate($img, 255, 255, 255);
+        $black = imagecolorallocate($img, 0, 0, 0);
+        // Rellenar fondo blanco
+        imagefill($img, 0, 0, $white);
+
+        // 4. Dibujar los módulos (matriz QR)
+        for ($y = 0; $y < $moduleCount; $y++) {
+            for ($x = 0; $x < $moduleCount; $x++) {
+                if ($matrix->get($x, $y)) {
+                    $pixelX = ($x + $marginModules) * $modulePixel;
+                    $pixelY = ($y + $marginModules) * $modulePixel;
+                    imagefilledrectangle(
+                        $img,
+                        $pixelX,
+                        $pixelY,
+                        $pixelX + $modulePixel - 1,
+                        $pixelY + $modulePixel - 1,
+                        $black
+                    );
+                }
+            }
+        }
+
+        // 5. Obtener la imagen PNG como string
+        ob_start();
+        imagepng($img);
+        $pngData = ob_get_clean();
+        imagedestroy($img);
+
+        // 6. Codificar a base64 y retornar data URI
+        return 'data:image/png;base64,' . base64_encode($pngData);
     }
 
     /**
@@ -79,7 +127,7 @@ class QrService
 
         [$ivBase64, $ciphertextBase64] = $parts;
 
-        $iv         = base64_decode($ivBase64, true);
+        $iv = base64_decode($ivBase64, true);
         $ciphertext = base64_decode($ciphertextBase64, true);
 
         if ($iv === false || $ciphertext === false) {
@@ -100,7 +148,6 @@ class QrService
 
         $data = json_decode($payload, true);
 
-        // Validar estructura mínima
         if (!is_array($data) || !isset($data['user_id'])) {
             return null;
         }
