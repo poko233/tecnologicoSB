@@ -12,9 +12,9 @@ class SuperAdminSeeder extends Seeder
     {
         // Roles
         $roles = [
-            ['id' => 1, 'rol' => 'Personal',                'descripcion' => 'Encargado de tareas administrativas generales del instituto'],
+            ['id' => 1, 'rol' => 'Administrador',                'descripcion' => 'Encargado de tareas administrativas generales del instituto'],
             ['id' => 2, 'rol' => 'Estudiante',              'descripcion' => 'Persona inscrita en una carrera o curso del instituto'],
-            ['id' => 3, 'rol' => 'Administrador',           'descripcion' => 'Gestiona usuarios, roles y configuraciones del sistema'],
+            ['id' => 3, 'rol' => 'Docente',           'descripcion' => 'Gestiona usuarios, roles y configuraciones del sistema'],
             ['id' => 4, 'rol' => 'Rector',                  'descripcion' => 'Autoridad máxima académica y administrativa del instituto'],
             ['id' => 5, 'rol' => 'Director Administrativo', 'descripcion' => 'Responsable de la gestión administrativa y financiera'],
             ['id' => 6, 'rol' => 'Director Academico',      'descripcion' => 'Responsable de la planificación y control académico'],
