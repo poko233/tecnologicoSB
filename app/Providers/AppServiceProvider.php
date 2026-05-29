@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\CarreraUsuario;
+use App\Models\User;
 use App\Observers\CarreraUsuarioObserver;
+use App\Observers\UserObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -22,5 +24,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         CarreraUsuario::observe(CarreraUsuarioObserver::class);
+        User::observe(UserObserver::class);
     }
 }
