@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use RuntimeException;
@@ -71,13 +73,15 @@ class QrService
         $moduleCount = $matrix->getWidth(); // Número de módulos por lado
 
         // 2. Configurar tamaño de la imagen y margen
-        $imageSize = 500;          // Tamaño en píxeles de la imagen final
+        $imageSize = 500;          // Tamaño deseado en píxeles
         $marginModules = 1;        // Módulos de margen (quiet zone)
         $totalModules = $moduleCount + 2 * $marginModules;
-        $modulePixel = floor($imageSize / $totalModules); // Tamaño de cada módulo en px
-        $imageSizeAdjusted = $modulePixel * $totalModules; // Ajuste exacto
+        // Calcular tamaño de módulo en píxeles y forzar entero
+        $modulePixel = (int) floor($imageSize / $totalModules);
+        // Calcular tamaño real de la imagen (entero)
+        $imageSizeAdjusted = (int) ($modulePixel * $totalModules);
 
-        // 3. Crear imagen GD
+        // 3. Crear imagen GD con dimensiones enteras
         $img = imagecreatetruecolor($imageSizeAdjusted, $imageSizeAdjusted);
         // Colores
         $white = imagecolorallocate($img, 255, 255, 255);
@@ -89,14 +93,14 @@ class QrService
         for ($y = 0; $y < $moduleCount; $y++) {
             for ($x = 0; $x < $moduleCount; $x++) {
                 if ($matrix->get($x, $y)) {
-                    $pixelX = ($x + $marginModules) * $modulePixel;
-                    $pixelY = ($y + $marginModules) * $modulePixel;
+                    $pixelX = (int) (($x + $marginModules) * $modulePixel);
+                    $pixelY = (int) (($y + $marginModules) * $modulePixel);
                     imagefilledrectangle(
                         $img,
                         $pixelX,
                         $pixelY,
-                        $pixelX + $modulePixel - 1,
-                        $pixelY + $modulePixel - 1,
+                        (int) ($pixelX + $modulePixel - 1),
+                        (int) ($pixelY + $modulePixel - 1),
                         $black
                     );
                 }
@@ -111,47 +115,5 @@ class QrService
 
         // 6. Codificar a base64 y retornar data URI
         return 'data:image/png;base64,' . base64_encode($pngData);
-    }
-
-    /**
-     * Desencripta un string QR.
-     * Devuelve el array del payload o null si falla.
-     */
-    public function decrypt(string $qrData): ?array
-    {
-        $parts = explode(':', $qrData, 2);
-
-        if (count($parts) !== 2) {
-            return null;
-        }
-
-        [$ivBase64, $ciphertextBase64] = $parts;
-
-        $iv = base64_decode($ivBase64, true);
-        $ciphertext = base64_decode($ciphertextBase64, true);
-
-        if ($iv === false || $ciphertext === false) {
-            return null;
-        }
-
-        $payload = openssl_decrypt(
-            $ciphertext,
-            self::CIPHER,
-            $this->key,
-            OPENSSL_RAW_DATA,
-            $iv
-        );
-
-        if ($payload === false) {
-            return null;
-        }
-
-        $data = json_decode($payload, true);
-
-        if (!is_array($data) || !isset($data['user_id'])) {
-            return null;
-        }
-
-        return $data;
     }
 }

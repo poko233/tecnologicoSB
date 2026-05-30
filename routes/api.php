@@ -46,19 +46,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | QR — Desencriptación, Asistencia y Control de Acceso
+    | QR — Control de Acceso Institucional
     |--------------------------------------------------------------------------
     */
 
-    // Cualquier usuario autenticado puede desencriptar un QR
-    Route::post('/qr/decrypt', [QrController::class, 'decrypt']);
-
-    // Solo Docentes pueden registrar asistencia
-    Route::post('/qr/asistencia', [QrController::class, 'asistencia'])
-        ->middleware('role:Docente');
-
     // Solo personal de control de acceso puede verificar ingreso
     Route::post('/qr/verify-access', [QrController::class, 'verifyAccess'])
+        ->middleware('role:Administrador,Portero,Seguridad');
+
+    // Nueva verificación por CI (mismos roles)
+    Route::post('/qr/verify-access-ci', [QrController::class, 'verifyAccessByCi'])
         ->middleware('role:Administrador,Portero,Seguridad');
 
     Route::get('mis-modulos', MisModulosController::class);
@@ -114,7 +111,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/asignacion-docente', [AsignacionDocenteController::class, 'index']);
     Route::post('/asignacion-docente', [AsignacionDocenteController::class, 'guardar']);
-    Route::delete('/asignacion-docente/materia/{idMateria}', [AsignacionDocenteController::class, 'eliminarPorMateria']);Route::delete('/asignacion-docente/{idMateria}/{idDocente}', [AsignacionDocenteController::class, 'eliminarAsignacion']);
+    Route::delete('/asignacion-docente/materia/{idMateria}', [AsignacionDocenteController::class, 'eliminarPorMateria']);
+    Route::delete('/asignacion-docente/{idMateria}/{idDocente}', [AsignacionDocenteController::class, 'eliminarAsignacion']);
 
     Route::middleware('rol:1,2')->group(function () {
         Route::apiResource('areas', AreaController::class)->except(['index', 'show']);
