@@ -44,21 +44,16 @@ Route::post('/password/forgot-email', [PasswordResetController::class, 'sendCode
 Route::post('/password/verify-code', [PasswordResetController::class, 'verifyCode']);
 Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']);
 
+/*
+|--------------------------------------------------------------------------
+| CONTROL DE ACCESO A LA INSTITUCION (COMPLETAMENTE PUBLICO)
+|--------------------------------------------------------------------------
+*/
+Route::post('/qr/verify-access', [QrController::class, 'verifyAccess']);
+Route::post('/qr/verify-access-ci', [QrController::class, 'verifyAccessByCi']);
+
 Route::middleware('auth:sanctum')->group(function () {
 
-    /*
-    |--------------------------------------------------------------------------
-    | QR — Control de Acceso Institucional
-    |--------------------------------------------------------------------------
-    */
-
-    // Solo personal de control de acceso puede verificar ingreso
-    Route::post('/qr/verify-access', [QrController::class, 'verifyAccess'])
-        ->middleware('role:Administrador,Portero,Seguridad');
-
-    // Nueva verificación por CI (mismos roles)
-    Route::post('/qr/verify-access-ci', [QrController::class, 'verifyAccessByCi'])
-        ->middleware('role:Administrador,Portero,Seguridad');
 
     Route::get('mis-modulos', MisModulosController::class);
 
