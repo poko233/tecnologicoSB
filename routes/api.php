@@ -27,6 +27,8 @@ use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\AsignacionDocenteController;
 use App\Http\Controllers\DocenteController;
+use App\Http\Controllers\DocenteAsistenciaController;
+
 use App\Http\Controllers\QrController;
 
 /*
@@ -74,6 +76,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/docentes/{idDocente}', [DocenteController::class, 'update']);
     Route::delete('/docentes/{idDocente}', [DocenteController::class, 'destroy']);
     Route::put('/docentes/{idDocente}/activar', [DocenteController::class, 'activar']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Asistencia Docentes
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('role:Docente')->group(function () {
+        Route::get('/docente/grupos-asignados', [DocenteAsistenciaController::class, 'gruposAsignados']);
+        Route::get('/docente/grupos-asignados/{idGrupoMateriaDocente}/estudiantes', [DocenteAsistenciaController::class, 'estudiantes']);
+        Route::post('/docente/asistencia', [DocenteAsistenciaController::class, 'registrarAsistencia']);
+        Route::post('/docente/asistencia/batch', [DocenteAsistenciaController::class, 'batch']);
+
+    });
 
     /*
     |--------------------------------------------------------------------------

@@ -66,7 +66,12 @@ class User extends Authenticatable
         return $this->hasMany(Cuota::class, 'idUsuario');
     }
 
-    // Método auxiliar para verificar roles (útil en permisos)
+    public function carreras()
+    {
+        return $this->belongsToMany(Carrera::class, 'CarreraUsuario', 'idUsuario', 'idCarrera')
+            ->withPivot('idCarreraUsuario');
+    }
+
     public function hasRole(string $rolNombre): bool
     {
         return $this->roles()->where('rol', $rolNombre)->exists();
@@ -76,9 +81,9 @@ class User extends Authenticatable
     {
         return $this->roles()->whereIn('rol', $roles)->exists();
     }
-    // Metodos para Inscripciones
+
     public function numeroReferencias()
-{
-    return $this->hasMany(NumeroReferencia::class, 'idUsuario', 'id');
-}
+    {
+        return $this->hasMany(NumeroReferencia::class, 'idUsuario', 'id');
+    }
 }

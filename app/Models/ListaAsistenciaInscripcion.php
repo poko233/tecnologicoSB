@@ -14,8 +14,14 @@ class ListaAsistenciaInscripcion extends Model
     protected $fillable = [
         'observacion',
         'tipo',
+        'fecha',
+        'idHorario',
         'idInscripcion',
         'idListaAsistencia',
+    ];
+
+    protected $casts = [
+        'fecha' => 'date',
     ];
 
     public function inscripcion()
@@ -34,5 +40,10 @@ class ListaAsistenciaInscripcion extends Model
             'idListaAsistencia',
             'idListaAsistencia'
         );
+    }
+
+    public function horario()
+    {
+        return $this->belongsTo(Horario::class, 'idHorario', 'idHorario');
     }
 }
