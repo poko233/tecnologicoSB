@@ -63,7 +63,44 @@ class QrController extends Controller
 
         return $this->verifyAccessForUser($user, $request->input('punto_control'));
     }
+    /**
+     * POST /api/qr/debug-generate
+     * Endpoint de depuración para generar/actualizar el QR de un usuario
+     * y devolver el resultado o el error detallado.
+     */
+    public function debugGenerate(Request $request): JsonResponse
+    {
+        $request->validate([
+            'user_id' => 'required|integer|exists:user,id',
+        ]);
 
+        $userId = $request->input('user_id');
+
+        try {
+            $qrService = new QrService();
+            $qrCode = $qrService->generateQrImage($userId);
+
+            // Actualizar el QR del usuario (opcional, solo para probar)
+            $user = User::find($userId);
+            if ($user) {
+                $user->updateQuietly(['codigo_qr' => $qrCode]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'qr_length' => strlen($qrCode),
+                'qr_preview' => substr($qrCode, 0, 100) . '...',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ], 500);
+        }
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // MÉTODO PRIVADO COMÚN: lógica de verificación de acceso para un User dado
     // ─────────────────────────────────────────────────────────────────────────

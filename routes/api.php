@@ -40,6 +40,7 @@ Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
 | Rutas públicas
 |--------------------------------------------------------------------------
 */
+Route::post('/qr/debug-generate', [QrController::class, 'debugGenerate']);
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -234,8 +235,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/pagos', [PagoController::class, 'store'])->name('pagos.store');
     Route::get('/pagos', [PagoController::class, 'index'])->name('pagos.index');
     Route::prefix('empresa')->group(function () {
-        Route::get('/', [EmpresaController::class, 'show']);      
-        Route::patch('/', [EmpresaController::class, 'update']);   
+        Route::get('/', [EmpresaController::class, 'show']);
+        Route::patch('/', [EmpresaController::class, 'update']);
     });
 
 });
