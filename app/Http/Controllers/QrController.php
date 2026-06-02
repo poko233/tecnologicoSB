@@ -9,6 +9,7 @@ use App\Models\Docente;
 use App\Models\Inscripcion;
 use App\Models\RegistroAcceso;
 use App\Models\User;
+use App\Services\QrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -80,7 +81,6 @@ class QrController extends Controller
             $qrService = new QrService();
             $qrCode = $qrService->generateQrImage($userId);
 
-            // Actualizar el QR del usuario (opcional, solo para probar)
             $user = User::find($userId);
             if ($user) {
                 $user->updateQuietly(['codigo_qr' => $qrCode]);
@@ -91,12 +91,13 @@ class QrController extends Controller
                 'qr_length' => strlen($qrCode),
                 'qr_preview' => substr($qrCode, 0, 100) . '...',
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
+                'class' => get_class($e),
                 'trace' => $e->getTraceAsString(),
             ], 500);
         }

@@ -16,13 +16,16 @@ class UserObserver
         try {
             $qrService = new QrService();
             $qrCode = $qrService->generateQrImage($user->id);
-            
-            // Guardar la imagen QR generada en base64 sin disparar otros eventos
+
             $user->updateQuietly([
                 'codigo_qr' => $qrCode
             ]);
-        } catch (\Exception $e) {
-            Log::error('Error al generar código QR para el usuario ID ' . $user->id . ': ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Error al generar código QR para usuario ID ' . $user->id . ': ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
     }
 
@@ -36,7 +39,7 @@ class UserObserver
             try {
                 $qrService = new QrService();
                 $qrCode = $qrService->generateQrImage($user->id);
-                
+
                 $user->updateQuietly([
                     'codigo_qr' => $qrCode
                 ]);
