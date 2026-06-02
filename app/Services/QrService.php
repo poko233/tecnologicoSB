@@ -19,7 +19,7 @@ class QrService
 
     public function __construct()
     {
-        $hexKey = env('QR_SECRET_KEY', '');
+        $hexKey = config('qr.secret_key');
 
         if (strlen($hexKey) !== 64) {
             throw new RuntimeException(
