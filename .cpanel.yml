@@ -18,10 +18,13 @@ deployment:
     # 5. Ejecutar migraciones con PHP 8.4
     - /opt/cpanel/ea-php84/root/usr/bin/php artisan migrate --force
 
-    # 6. Cachear configuración, rutas y vistas con PHP 8.4
+    # 6. Limpiar configuración cacheada anterior (para evitar valores antiguos)
+    - /opt/cpanel/ea-php84/root/usr/bin/php artisan config:clear
+
+    # 7. Cachear configuración, rutas y vistas con PHP 8.4
     - /opt/cpanel/ea-php84/root/usr/bin/php artisan config:cache
     - /opt/cpanel/ea-php84/root/usr/bin/php artisan route:cache
     - /opt/cpanel/ea-php84/root/usr/bin/php artisan view:cache
 
-    # 7. Permisos de almacenamiento
+    # 8. Permisos de almacenamiento
     - chmod -R 775 $DEPLOYPATH/storage $DEPLOYPATH/bootstrap/cache
