@@ -29,9 +29,12 @@ use App\Http\Controllers\AsignacionDocenteController;
 use App\Http\Controllers\DocenteController;
 use App\Http\Controllers\DocenteAsistenciaController;
 use App\Http\Controllers\EmpresaController;
+use App\Http\Controllers\ReciboController;
 
 use App\Http\Controllers\QrController;
 
+
+Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
 /*
 |--------------------------------------------------------------------------
 | Rutas públicas
