@@ -11,7 +11,7 @@ use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\ModuloRolController;
 use App\Http\Controllers\MisModulosController;
-
+use App\Http\Controllers\AsignacionesController;
 use App\Http\Controllers\CuotaController;
 use App\Http\Controllers\MatriculaController;
 use App\Http\Controllers\PagoController;
@@ -117,6 +117,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/estudiantes/verificar-datos', [EstudianteController::class, 'verificarDatos']);
     Route::get('/materias/{idMateria}/grupos', [MateriaController::class, 'gruposPorMateria']);
+    Route::prefix('asignaciones')->group(function () {
+    Route::get('/estudiantes', [AsignacionesController::class, 'estudiantes']);
+    Route::get('/estudiantes/{idUsuario}', [AsignacionesController::class, 'detalleEstudiante']);
+    Route::get('/estudiantes/{idUsuario}/semestre-uno', [AsignacionesController::class, 'materiasSemestreUno']);
+    Route::post('/estudiantes/{idUsuario}/inscribir-semestre-uno', [AsignacionesController::class, 'inscribirSemestreUno']);
+    Route::put('/estudiantes/{idUsuario}', [AsignacionesController::class, 'actualizarEstudiante']);
+});
     /*
     |--------------------------------------------------------------------------
     | Asignación de docentes a materias y grupos
@@ -237,5 +244,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [EmpresaController::class, 'show']);      
         Route::patch('/', [EmpresaController::class, 'update']);   
     });
-
+    Route::post('/inscripcion/pago-cuotas', [
+    InscripcionAcademicaController::class,
+    'guardarPagoCuotas'
+]);
 });
