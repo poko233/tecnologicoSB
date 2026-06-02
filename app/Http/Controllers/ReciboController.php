@@ -43,7 +43,7 @@ class ReciboController extends Controller
         // ── 2. Procesar el Logo en Base64 para Dompdf ──────────────────────────
         $logoBase64 = null;
         $nombreLogo = $empresa->LOGO_CUADRADO ?? 'logo_cuadrado.png'; 
-        $pathLogo   = storage_path("app/public/empresa/{$nombreLogo}");
+        $pathLogo = public_path("empresa/{$nombreLogo}");
 
         if (file_exists($pathLogo)) {
             $type       = pathinfo($pathLogo, PATHINFO_EXTENSION);
