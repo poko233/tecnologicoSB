@@ -28,9 +28,13 @@ use App\Http\Controllers\HorarioController;
 use App\Http\Controllers\AsignacionDocenteController;
 use App\Http\Controllers\DocenteController;
 use App\Http\Controllers\DocenteAsistenciaController;
+use App\Http\Controllers\EmpresaController;
+use App\Http\Controllers\ReciboController;
 
 use App\Http\Controllers\QrController;
 
+
+Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
 /*
 |--------------------------------------------------------------------------
 | Rutas públicas
@@ -229,5 +233,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Registro y consulta de pagos (Multicuota Muchos a Muchos)
     Route::post('/pagos', [PagoController::class, 'store'])->name('pagos.store');
     Route::get('/pagos', [PagoController::class, 'index'])->name('pagos.index');
+    Route::prefix('empresa')->group(function () {
+        Route::get('/', [EmpresaController::class, 'show']);      
+        Route::patch('/', [EmpresaController::class, 'update']);   
+    });
 
 });
