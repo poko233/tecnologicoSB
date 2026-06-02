@@ -75,13 +75,24 @@ class QrController extends Controller
             'user_id' => 'required|integer|exists:user,id',
         ]);
 
-        $userId = $request->input('user_id');
+        // ---- DIAGNÓSTICO DE QR_SECRET_KEY ----
+        $envValue = env('QR_SECRET_KEY', '');
+        $envLength = strlen($envValue);
+        $envFirst = substr($envValue, 0, 10);
+
+        $getenvValue = getenv('QR_SECRET_KEY');
+        $getenvLength = $getenvValue !== false ? strlen($getenvValue) : 'no definida';
+        $getenvFirst = $getenvValue !== false ? substr($getenvValue, 0, 10) : '';
+
+        $serverValue = $_SERVER['QR_SECRET_KEY'] ?? 'no definida';
+        $serverLength = $serverValue !== 'no definida' ? strlen($serverValue) : 'no definida';
+        // ---------------------------------------
 
         try {
-            $qrService = new QrService();
-            $qrCode = $qrService->generateQrImage($userId);
+            $qrService = new QrService();   // aquí saltará el error si la clave es incorrecta
+            $qrCode = $qrService->generateQrImage($request->input('user_id'));
 
-            $user = User::find($userId);
+            $user = User::find($request->input('user_id'));
             if ($user) {
                 $user->updateQuietly(['codigo_qr' => $qrCode]);
             }
@@ -98,6 +109,19 @@ class QrController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'class' => get_class($e),
+                'diagnostico' => [
+                    'env' => [
+                        'longitud' => $envLength,
+                        'primeros10' => $envFirst,
+                    ],
+                    'getenv' => [
+                        'longitud' => $getenvLength,
+                        'primeros10' => $getenvFirst,
+                    ],
+                    '_SERVER' => [
+                        'longitud' => $serverLength,
+                    ],
+                ],
                 'trace' => $e->getTraceAsString(),
             ], 500);
         }
