@@ -10,20 +10,16 @@ use Dompdf\Dompdf;
 
 class ReciboController extends Controller
 {
-    /**
-     * Generar y descargar el recibo en PDF (Original y Copia) usando Dompdf.
-     */
     public function descargar(int $idPago, EmpresaService $empresaService)
     {
-        // CONTROL CRÍTICO: Verificar si el servidor tiene la extensión GD instalada
         if (!extension_loaded('gd')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error de configuración del servidor: La extensión PHP-GD no está activa. Comuníquese con el administrador del sistema.'
+                'message' => 'Error de configuración del servidor: La extensión PHP-GD no está activa.'
             ], 500);
         }
 
-        // ── 1. Obtener el pago con sus relaciones ─────────────────────────────
+        // ── 1. Obtener el pago ────────────────────────────────────────────────
         $pago = Pago::with([
             'cuotas',
             'usuario:id,nombres,apellidoPaterno,apellidoMaterno,ci,matricula',
@@ -40,10 +36,10 @@ class ReciboController extends Controller
         $estudiante = $pago->usuario;
         $empresa    = $empresaService->obtener();
 
-        // ── 2. Procesar el Logo en Base64 para Dompdf ──────────────────────────
+        // ── 2. Logo en Base64 ─────────────────────────────────────────────────
         $logoBase64 = null;
-        $nombreLogo = $empresa->LOGO_CUADRADO ?? 'logo_cuadrado.png'; 
-        $pathLogo = public_path("empresa/{$nombreLogo}");
+        $nombreLogo = $empresa->LOGO_CUADRADO ?? 'logo_cuadrado.png';
+        $pathLogo   = public_path("empresa/{$nombreLogo}");
 
         if (file_exists($pathLogo)) {
             $type       = pathinfo($pathLogo, PATHINFO_EXTENSION);
@@ -51,17 +47,14 @@ class ReciboController extends Controller
             $logoBase64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
         }
 
-        // ── 3. Obtener Carrera ────────────────────────────────────────────────
+        // ── 3. Carrera ────────────────────────────────────────────────────────
         $idCarrera = $cuota->idCarrera ?? DB::table('CarreraUsuario')->where('idUsuario', $estudiante->id)->value('idCarrera');
-        
-        $carrera = DB::table('Carrera')
-            ->where('idCarrera', $idCarrera)
-            ->value('nombreCarrera');
+        $carrera   = DB::table('Carrera')->where('idCarrera', $idCarrera)->value('nombreCarrera');
 
-        // ── 4. Número de boleta correlativo ───────────────────────────────────
+        // ── 4. Número de boleta ───────────────────────────────────────────────
         $numeroBoleta = Pago::where('id', '<=', $pago->id)->count();
 
-        // ── 5. Formatear Datos ────────────────────────────────────────────────
+        // ── 5. Formatear datos ────────────────────────────────────────────────
         $fecha    = Carbon::parse($pago->created_at)->format('d/m/Y');
         $hora     = Carbon::parse($pago->created_at)->format('H:i');
         $metodo   = strtoupper($pago->metodo);
@@ -74,7 +67,6 @@ class ReciboController extends Controller
             $estudiante->apellidoMaterno
         ));
 
-        // Construir filas de conceptos
         $filasPago = $pago->cuotas->map(function ($c) {
             $mes = $c->fecha_vencimiento
                 ? strtoupper(Carbon::parse($c->fecha_vencimiento)->locale('es')->isoFormat('MMMM/YYYY'))
@@ -88,8 +80,7 @@ class ReciboController extends Controller
         $filasHtml = '';
         foreach ($filasPago as $fila) {
             $montoFmt  = number_format($fila['monto'], 2, '.', ',');
-            $filasHtml .= "
-            <tr>
+            $filasHtml .= "<tr>
                 <td class='concepto'>{$fila['concepto']}</td>
                 <td class='monto'>{$montoFmt} Bs.</td>
             </tr>";
@@ -97,22 +88,21 @@ class ReciboController extends Controller
 
         $totalFmt = number_format($total, 2, '.', ',');
 
-        // ── 6. Definir el Bloque HTML de cada lado ────────────────────────────
+        // ── 6. Bloque HTML ────────────────────────────────────────────────────
         $bloqueHtml = function (string $tipo) use (
             $empresa, $numeroBoleta, $fecha, $hora, $metodo,
             $nombreEstudiante, $estudiante, $carrera,
             $filasHtml, $totalFmt, $enLetras, $logoBase64
         ): string {
-            $nombreEmpresa  = strtoupper($empresa->EMPRESA ?? 'INSTITUCIÓN');
-            $siglaEmpresa   = strtoupper($empresa->SIGLA  ?? '');
-            $dirEmpresa     = strtoupper($empresa->DIRECCION ?? '');
-            $telEmpresa     = $empresa->TELEFONO ?? $empresa->CELULAR ?? '';
-            $ciudad         = 'COCHABAMBA';
-            $codigo         = $estudiante->matricula ?? '—';
-            $ci             = $estudiante->ci ?? '—';
+            $nombreEmpresa = strtoupper($empresa->EMPRESA ?? 'INSTITUCIÓN');
+            $siglaEmpresa  = strtoupper($empresa->SIGLA   ?? '');
+            $dirEmpresa    = strtoupper($empresa->DIRECCION ?? '');
+            $telEmpresa    = trim(($empresa->TELEFONO ?? '') . ($empresa->CELULAR ? ' - ' . $empresa->CELULAR : ''));
+            $codigo        = $estudiante->matricula ?? '—';
+            $ci            = $estudiante->ci ?? '—';
 
-            $logoHtml = $logoBase64 
-                ? "<img src='{$logoBase64}' class='logo-img' alt='Logo'>" 
+            $logoHtml = $logoBase64
+                ? "<img src='{$logoBase64}' class='logo-img' alt='Logo'>"
                 : "<div class='logo-circle'>LOGO</div>";
 
             return "
@@ -123,7 +113,9 @@ class ReciboController extends Controller
                         <td class='empresa-cell'>
                             <strong>{$nombreEmpresa}</strong><br>
                             <span class='sigla'>\"{$siglaEmpresa}\"</span><br>
-                            Telf: {$telEmpresa}
+                            {$dirEmpresa}<br>
+                            Telf: {$telEmpresa}<br>
+                            COCHABAMBA - BOLIVIA
                         </td>
                         <td class='titulo-cell'>
                             <div class='titulo-ingreso'>INGRESO</div>
@@ -162,7 +154,7 @@ class ReciboController extends Controller
                     </thead>
                     <tbody>
                         <tr>
-                            <td>{$ciudad} - {$fecha} {$hora}</td>
+                            <td>COCHABAMBA - {$fecha} {$hora}</td>
                             <td class='metodo'>{$metodo}</td>
                         </tr>
                     </tbody>
@@ -201,40 +193,36 @@ class ReciboController extends Controller
             </div>";
         };
 
-        // ── 7. CSS Calibrado - Sin Bordes de Caja y Anchura Segura ────────────
-        $html = '<!DOCTYPE html>
+        // ── 7. HTML completo — usar HEREDOC para evitar conflicto de comillas ──
+        $bloqueOriginal = $bloqueHtml('ORIGINAL');
+        $bloqueCogia    = $bloqueHtml('COPIA');
+
+        $html = <<<HTML
+        <!DOCTYPE html>
         <html lang="es">
         <head>
         <meta charset="UTF-8">
         <style>
-            /* Reseteo absoluto de márgenes internos */
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            
-            body { 
-                font-family: Helvetica, Arial, sans-serif; 
+
+            body {
+                font-family: Helvetica, Arial, sans-serif;
                 font-size: 6.2pt;
                 color: #000;
                 background-color: #fff;
             }
-            
-            /* Definimos la página vertical con márgenes globales seguros */
-            // @page { size: letter portrait; margin: 6mm 4mm 0 4mm; }
+
             @page { size: letter portrait; margin: 8mm 6mm 4mm 6mm; }
 
-            .page-container {
-                width: 100%;
-                height: 100%;
-            }
+            .page-container { width: 100%; height: 100%; }
 
-            /* Bloque maestro superior que delimita la media hoja horizontal */
             .seccion-superior {
                 width: 100%;
                 height: 128mm;
-                border-bottom: 1.2pt dashed #999; /* Línea de puntos central de corte */
+                border-bottom: 1.2pt dashed #999;
                 display: block;
             }
 
-            /* Reducimos el ancho a 46% para empujar la copia hacia adentro */
             .columna-recibo-izq {
                 float: left;
                 width: 48%;
@@ -245,11 +233,10 @@ class ReciboController extends Controller
                 float: right;
                 width: 48%;
                 box-sizing: border-box;
-                margin-right: 4mm; /* Sobre espacio de seguridad para que entre completo */
+                margin-right: 4mm;
             }
 
-            /* QUITADOS LOS BORDES EXTERNOS DE AQUÍ PARA QUE QUEDE LIMPIO */
-            .recibo-box { 
+            .recibo-box {
                 width: 100%;
                 height: 122mm;
                 padding: 2mm 2mm;
@@ -257,36 +244,34 @@ class ReciboController extends Controller
                 background-color: #fff;
             }
 
-            .clearfix {
-                clear: both;
-            }
+            .clearfix { clear: both; }
 
             .header-table { width: 100%; border-collapse: collapse; margin-bottom: 2mm; }
             .logo-cell { width: 13mm; vertical-align: middle; text-align: center; }
             .logo-img { max-width: 12mm; max-height: 12mm; object-fit: contain; }
-            
-            .empresa-cell { vertical-align: top; padding-left: 1.5mm; line-height: 1.2; font-size: 5.8pt; }
-            .empresa-cell strong { font-size: 7.2pt; color: #1a387a; }
+
+            .empresa-cell { vertical-align: top; padding-left: 1.5mm; line-height: 1.4; font-size: 5.8pt; }
+            .empresa-cell strong { font-size: 7.2pt; color: #000000; font-weight: bold; }
             .sigla { font-size: 6.2pt; font-weight: bold; }
-            
+
             .titulo-cell { text-align: right; vertical-align: top; }
-            .titulo-ingreso { font-size: 9.5pt; font-weight: bold; color: #1a387a; }
+            .titulo-ingreso { font-size: 9.5pt; font-weight: bold; color: #cc0000; }
             .titulo-boleta  { font-size: 6pt; color: #555; }
-            .titulo-num     { font-size: 13pt; font-weight: bold; }
-            .titulo-tipo    { font-size: 7pt; font-weight: bold; color: #1a387a; }
-            
+            .titulo-num     { font-size: 13pt; font-weight: bold; color: #cc0000; }
+            .titulo-tipo    { font-size: 7pt; font-weight: bold; color: #cc0000; }
+
             hr.divisor { border: none; border-top: 0.6pt solid #333; margin: 1mm 0; }
-            
+
             .datos-table { width: 100%; border-collapse: collapse; margin-bottom: 2mm; background-color: #fcfcfc; border: 0.5pt solid #bbb; }
             .datos-table td { padding: 1mm 1.2mm; }
             .label { font-weight: bold; white-space: nowrap; width: 18%; color: #333; }
             .valor { padding-left: 0.5mm; }
-            
+
             .info-table { width: 100%; border-collapse: collapse; margin-bottom: 2mm; }
             .info-table th, .info-table td { border: 0.5pt solid #333; text-align: center; padding: 1mm; }
             .info-table th { background-color: #e5e5e5; font-size: 6.2pt; font-weight: bold; }
             .metodo { font-weight: bold; }
-            
+
             .pagos-table { width: 100%; border-collapse: collapse; margin-bottom: 2mm; }
             .pagos-table th, .pagos-table td { border: 0.5pt solid #333; padding: 1.5mm 1.8mm; }
             .pagos-table thead th { background-color: #e5e5e5; text-align: center; font-weight: bold; }
@@ -294,38 +279,33 @@ class ReciboController extends Controller
             .pagos-table td.monto    { text-align: center; font-weight: bold; }
             .pagos-table th.concepto { width: 72%; }
             .pagos-table th.monto    { width: 28%; }
-            
-            .total-row td { background-color: #1a387a; color: #fff; font-weight: bold; font-size: 7.5pt; }
-            
+
+            .total-row td { background-color: #000000; color: #fff; font-weight: bold; font-size: 7.5pt; }
+
             .son { font-style: italic; font-size: 5.8pt; margin: 2mm 0 3mm 0; }
-            
-            .firmas-table { width: 100%; border-collapse: collapse; margin-top: 10mm; }
+
+            .firmas-table { width: 100%; border-collapse: collapse; margin-top: 20mm; }
             .firmas-table .firma { text-align: center; width: 50%; font-size: 5.8pt; color: #333; }
             .linea-firma { border-top: 0.6pt solid #000; width: 60%; margin: 0 auto 1mm auto; }
         </style>
         </head>
         <body>
         <div class="page-container">
-            
             <div class="seccion-superior">
-                
                 <div class="columna-recibo-izq">
-                    ' . $bloqueHtml('ORIGINAL') . '
+                    {$bloqueOriginal}
                 </div>
-                
                 <div class="columna-recibo-der">
-                    ' . $bloqueHtml('COPIA') . '
+                    {$bloqueCogia}
                 </div>
-                
                 <div class="clearfix"></div>
-                
             </div>
-
         </div>
         </body>
-        </html>';
+        </html>
+        HTML;
 
-        // ── 8. Renderizar ────────────────────────────────────────────────────
+        // ── 8. Renderizar ─────────────────────────────────────────────────────
         $dompdf = new Dompdf();
         $dompdf->loadHtml($html);
         $dompdf->setPaper('letter', 'portrait');
@@ -338,9 +318,7 @@ class ReciboController extends Controller
             'Content-Disposition' => "attachment; filename=\"boleta_{$idPago}.pdf\"",
         ]);
     }
-    /**
-     * Convertir número a letras básico en español.
-     */
+
     private static function numeroALetras(float $numero): string
     {
         $unidades = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE', 'DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
