@@ -116,6 +116,8 @@ class EstudianteController extends Controller
             return response()->json([
                 'message' => 'No se pudo registrar al estudiante.',
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ], 500);
         }
     }
@@ -204,6 +206,8 @@ class EstudianteController extends Controller
             return response()->json([
                 'message' => 'No se pudo actualizar el estudiante.',
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ], 500);
         }
     }
@@ -230,6 +234,8 @@ class EstudianteController extends Controller
             return response()->json([
                 'message' => 'No se pudo eliminar el estudiante.',
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ], 500);
         }
     }

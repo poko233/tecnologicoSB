@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\CarreraUsuario;
 use App\Models\DocumentoEstudiante;
 use App\Models\Inscripcion;
+use App\Models\Cuota;
 use Illuminate\Support\Facades\DB;
 
 class ResumenInscripcionController extends Controller
@@ -18,6 +19,42 @@ class ResumenInscripcionController extends Controller
             ->where('idUsuario', $idUsuario)
             ->latest('idCarreraUsuario')
             ->first();
+
+        $cuotas = collect();
+
+        if ($carreraUsuario) {
+            $cuotas = Cuota::where('idUsuario', $idUsuario)
+                ->where('idCarrera', $carreraUsuario->idCarrera)
+                ->orderByRaw("
+                    CASE tipo
+                        WHEN 'MATRICULA' THEN 1
+                        WHEN 'MENSUAL' THEN 2
+                        ELSE 3
+                    END
+                ")
+                ->orderBy('numeroCuota')
+                ->get();
+        }
+
+        $matricula = $cuotas
+            ->where('tipo', 'MATRICULA')
+            ->first();
+
+        $cuotasMensuales = $cuotas
+            ->where('tipo', 'MENSUAL')
+            ->values();
+
+        $totalMatricula = $matricula ? (float) $matricula->monto : 0;
+
+        $totalCuotas = $cuotasMensuales
+            ->where('estadoCuota', '!=', 'Condonado')
+            ->sum('monto');
+
+        $totalCondonado = $cuotasMensuales
+            ->where('estadoCuota', 'Condonado')
+            ->sum('monto');
+
+        $totalPlan = $totalMatricula + $totalCuotas + $totalCondonado;
 
         $idsGrupos = Inscripcion::where('idUsuario', $idUsuario)
             ->pluck('idGrupo')
@@ -123,11 +160,24 @@ class ResumenInscripcionController extends Controller
 
             'grupos' => $grupos,
 
+            'cuotas' => $cuotas,
+
+            'planPago' => [
+                'matricula' => $matricula,
+                'cuotasMensuales' => $cuotasMensuales,
+                'totalMatricula' => $totalMatricula,
+                'totalCuotas' => $totalCuotas,
+                'totalCondonado' => $totalCondonado,
+                'totalPlan' => $totalPlan,
+                'cantidadCuotas' => $cuotasMensuales->count(),
+            ],
+
             'documentos' => $documentos,
 
             'validacion' => [
                 'datosPersonales' => true,
-                'datosAcademicos' => $carreraUsuario && $grupos->count() > 0,
+                'datosAcademicos' => (bool) $carreraUsuario,
+                'cuotasGeneradas' => $cuotas->count() > 0,
                 'documentosCargados' => $documentos->count() > 0,
             ],
         ]);
