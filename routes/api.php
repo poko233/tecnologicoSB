@@ -41,7 +41,7 @@ Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
 |--------------------------------------------------------------------------
 */
 Route::post('/qr/debug-generate', [QrController::class, 'debugGenerate']);
-
+Route::post('/qr/regenerate-all', [QrController::class, 'regenerateAll']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
@@ -119,12 +119,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/estudiantes/verificar-datos', [EstudianteController::class, 'verificarDatos']);
     Route::get('/materias/{idMateria}/grupos', [MateriaController::class, 'gruposPorMateria']);
     Route::prefix('asignaciones')->group(function () {
-    Route::get('/estudiantes', [AsignacionesController::class, 'estudiantes']);
-    Route::get('/estudiantes/{idUsuario}', [AsignacionesController::class, 'detalleEstudiante']);
-    Route::get('/estudiantes/{idUsuario}/semestre-uno', [AsignacionesController::class, 'materiasSemestreUno']);
-    Route::post('/estudiantes/{idUsuario}/inscribir-semestre-uno', [AsignacionesController::class, 'inscribirSemestreUno']);
-    Route::put('/estudiantes/{idUsuario}', [AsignacionesController::class, 'actualizarEstudiante']);
-});
+        Route::get('/estudiantes', [AsignacionesController::class, 'estudiantes']);
+        Route::get('/estudiantes/{idUsuario}', [AsignacionesController::class, 'detalleEstudiante']);
+        Route::get('/estudiantes/{idUsuario}/semestre-uno', [AsignacionesController::class, 'materiasSemestreUno']);
+        Route::post('/estudiantes/{idUsuario}/inscribir-semestre-uno', [AsignacionesController::class, 'inscribirSemestreUno']);
+        Route::put('/estudiantes/{idUsuario}', [AsignacionesController::class, 'actualizarEstudiante']);
+    });
     /*
     |--------------------------------------------------------------------------
     | Asignación de docentes a materias y grupos
@@ -246,7 +246,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/', [EmpresaController::class, 'update']);
     });
     Route::post('/inscripcion/pago-cuotas', [
-    InscripcionAcademicaController::class,
-    'guardarPagoCuotas'
-]);
+        InscripcionAcademicaController::class,
+        'guardarPagoCuotas'
+    ]);
 });

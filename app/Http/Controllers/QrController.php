@@ -126,6 +126,63 @@ class QrController extends Controller
             ], 500);
         }
     }
+    /**
+     * POST /api/qr/regenerate-all
+     * Regenera todos los QR de los usuarios (ACTIVOS).
+     * Middleware: auth:sanctum, role:Administrador
+     *//**
+     * POST /api/qr/regenerate-all
+     * Regenera todos los QR de los usuarios (ACTIVOS).
+     * Middleware: auth:sanctum, role:Administrador
+     */
+    public function regenerateAll(Request $request): JsonResponse
+    {
+        // Aumentar tiempo máximo a 5 minutos
+        set_time_limit(300);
+
+        $total = User::where('estado', 'ACTIVO')->count();
+        $generados = 0;
+        $errores = [];
+
+        try {
+            $qrService = new QrService();
+
+            // Usamos cursor() en lugar de chunk para evitar problemas de hidratación
+            // y reducir el consumo de memoria.
+            $usuarios = User::where('estado', 'ACTIVO')->cursor();
+
+            foreach ($usuarios as $user) {
+                try {
+                    $qrDataUri = $qrService->generateQrImage($user->id);
+
+                    // Actualizar sin disparar eventos (updateQuietly no siempre funciona si no es Eloquent)
+                    User::withoutEvents(function () use ($user, $qrDataUri) {
+                        $user->update(['codigo_qr' => $qrDataUri]);
+                    });
+
+                    $generados++;
+                } catch (\Throwable $e) {
+                    $errores[] = [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'total_usuarios_activos' => $total,
+                'qr_generados' => $generados,
+                'errores' => $errores,
+                'mensaje' => "Se regeneraron {$generados} QR de {$total} usuarios activos.",
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // MÉTODO PRIVADO COMÚN: lógica de verificación de acceso para un User dado
     // ─────────────────────────────────────────────────────────────────────────
