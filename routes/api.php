@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\ElementoCompetenciaController;
+use App\Http\Controllers\NotasController;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
@@ -88,6 +90,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/docente/asistencia', [DocenteAsistenciaController::class, 'registrarAsistencia']);
         Route::post('/docente/asistencia/batch', [DocenteAsistenciaController::class, 'batch']);
 
+        /*
+        |--------------------------------------------------------------------------
+        | Notas Docentes
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/notas/mis-grupos', [NotasController::class, 'misGrupos']);
+        //ELEMENTOS DE COMPETENCIA
+        Route::post('/elementos-competencia/listar', [ElementoCompetenciaController::class, 'listar']);
+        Route::post('/elementos-competencia/crear', [ElementoCompetenciaController::class, 'crear']);
+        Route::post('/elementos-competencia/actualizar', [ElementoCompetenciaController::class, 'actualizar']);
+        //PLANILLA NOTAS
+        Route::post('/planilla', [NotasController::class, 'planilla']);
+        Route::post('/planilla/guardar', [NotasController::class, 'guardarNotas']);
     });
 
     /*
