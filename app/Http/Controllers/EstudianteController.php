@@ -19,6 +19,38 @@ class EstudianteController extends Controller
         ]);
     }
 
+    public function continuarInscripcion()
+    {
+        $estudiantes = User::with(['numeroReferencias', 'roles'])
+            ->whereDoesntHave('cuotas')
+            ->whereDoesntHave('carreras')
+            ->latest('id')
+            ->get();
+
+        return response()->json([
+            'estudiantes' => $estudiantes
+        ]);
+    }
+
+    public function documentosInscripcion(string $id)
+    {
+        $documentos = DB::table('DocumentoEstudiante')
+            ->select(
+                'idDocumentoEstudiante',
+                'nombreDocumento',
+                'ubicacionArchivo',
+                'estadoDocumento',
+                'idUsuario'
+            )
+            ->where('idUsuario', $id)
+            ->orderBy('idDocumentoEstudiante')
+            ->get();
+
+        return response()->json([
+            'documentos' => $documentos
+        ]);
+    }
+
     public function verificarDatos(Request $request)
     {
         $validated = $request->validate([
@@ -58,7 +90,7 @@ class EstudianteController extends Controller
     {
         $validated = $request->validate([
             'apellidoPaterno' => 'required|string|max:50',
-            'apellidoMaterno' => 'required|string|max:50',
+            'apellidoMaterno' => 'nullable|string|max:50',
             'nombres' => 'required|string|max:50',
             'genero' => 'required|string|in:MASCULINO,FEMENINO',
             'carnet' => 'required|string|max:50|unique:user,ci',
@@ -86,7 +118,7 @@ class EstudianteController extends Controller
                 'email' => strtolower($validated['email']),
                 'expedido' => $validated['expedidoEn'],
                 'apellidoPaterno' => $validated['apellidoPaterno'],
-                'apellidoMaterno' => $validated['apellidoMaterno'],
+                'apellidoMaterno' => $validated['apellidoMaterno'] ?? '',
                 'nombres' => $validated['nombres'],
                 'genero' => $validated['genero'],
                 'fecha_nac' => $validated['fechaNacimiento'],
@@ -124,7 +156,10 @@ class EstudianteController extends Controller
 
     public function show(string $id)
     {
-        $estudiante = User::with(['numeroReferencias', 'roles'])->findOrFail($id);
+        $estudiante = User::with([
+            'numeroReferencias',
+            'roles'
+        ])->findOrFail($id);
 
         return response()->json([
             'estudiante' => $estudiante
@@ -137,7 +172,7 @@ class EstudianteController extends Controller
 
         $validated = $request->validate([
             'apellidoPaterno' => 'required|string|max:50',
-            'apellidoMaterno' => 'required|string|max:50',
+            'apellidoMaterno' => 'nullable|string|max:50',
             'nombres' => 'required|string|max:50',
             'genero' => 'required|string|in:MASCULINO,FEMENINO',
 
@@ -177,7 +212,7 @@ class EstudianteController extends Controller
                 'email' => strtolower($validated['email']),
                 'expedido' => $validated['expedidoEn'],
                 'apellidoPaterno' => $validated['apellidoPaterno'],
-                'apellidoMaterno' => $validated['apellidoMaterno'],
+                'apellidoMaterno' => $validated['apellidoMaterno'] ?? '',
                 'nombres' => $validated['nombres'],
                 'genero' => $validated['genero'],
                 'fecha_nac' => $validated['fechaNacimiento'],

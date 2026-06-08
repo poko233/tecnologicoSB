@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DocumentoEstudiante;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 
 class DocumentoEstudianteController extends Controller
 {
@@ -32,6 +33,36 @@ class DocumentoEstudianteController extends Controller
 
         $ruta = 'documentos-estudiantes/' . $nombreArchivo;
 
+        $documentoExistente = DocumentoEstudiante::where('idUsuario', $validated['idUsuario'])
+            ->where('nombreDocumento', $validated['nombreDocumento'])
+            ->latest('idDocumentoEstudiante')
+            ->first();
+
+        if ($documentoExistente) {
+            if (
+                $documentoExistente->ubicacionArchivo &&
+                File::exists(public_path($documentoExistente->ubicacionArchivo))
+            ) {
+                File::delete(public_path($documentoExistente->ubicacionArchivo));
+            }
+
+            DocumentoEstudiante::where('idUsuario', $validated['idUsuario'])
+                ->where('nombreDocumento', $validated['nombreDocumento'])
+                ->where('idDocumentoEstudiante', '!=', $documentoExistente->idDocumentoEstudiante)
+                ->delete();
+
+            $documentoExistente->update([
+                'ubicacionArchivo' => $ruta,
+                'estadoDocumento' => 'Entregado',
+            ]);
+
+            return response()->json([
+                'message' => 'Documento actualizado correctamente',
+                'documento' => $documentoExistente->fresh(),
+                'url' => asset($ruta),
+            ], 200);
+        }
+
         $documento = DocumentoEstudiante::create([
             'nombreDocumento' => $validated['nombreDocumento'],
             'ubicacionArchivo' => $ruta,
@@ -48,8 +79,15 @@ class DocumentoEstudianteController extends Controller
 
     public function documentosUsuario($idUsuario)
     {
+        $documentos = DocumentoEstudiante::where('idUsuario', $idUsuario)
+            ->orderBy('nombreDocumento')
+            ->latest('idDocumentoEstudiante')
+            ->get()
+            ->unique('nombreDocumento')
+            ->values();
+
         return response()->json([
-            'documentos' => DocumentoEstudiante::where('idUsuario', $idUsuario)->get()
+            'documentos' => $documentos,
         ]);
     }
 }
