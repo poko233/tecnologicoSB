@@ -12,6 +12,13 @@ class ReciboController extends Controller
 {
     public function descargar(int $idPago, EmpresaService $empresaService)
     {
+        if ($tokenStr = request()->query('token')) {
+            $pat = \Laravel\Sanctum\PersonalAccessToken::findToken($tokenStr);
+            if (!$pat) {
+                return response()->json(['message' => 'No autorizado'], 401);
+            }
+            auth()->setUser($pat->tokenable);
+        }
         if (!extension_loaded('gd')) {
             return response()->json([
                 'success' => false,
@@ -22,7 +29,7 @@ class ReciboController extends Controller
         // ── 1. Obtener el pago ────────────────────────────────────────────────
         $pago = Pago::with([
             'cuotas',
-            'usuario:id,nombres,apellidoPaterno,apellidoMaterno,ci,matricula',
+            'usuario:id,nombres,apellidoPaterno,apellidoMaterno,ci',  // sin matricula
         ])->findOrFail($idPago);
 
         if ($pago->cuotas->isEmpty()) {
@@ -35,6 +42,9 @@ class ReciboController extends Controller
         $cuota      = $pago->cuotas->first();
         $estudiante = $pago->usuario;
         $empresa    = $empresaService->obtener();
+        $matricula = DB::table('Estudiante')
+            ->where('id_usuario', $estudiante->id)
+            ->value('matricula');
 
         // ── 2. Logo en Base64 ─────────────────────────────────────────────────
         $logoBase64 = null;
@@ -219,7 +229,7 @@ class ReciboController extends Controller
             .seccion-superior {
                 width: 100%;
                 height: 128mm;
-                border-bottom: 1.2pt dashed #999;
+                /* border-bottom: 1.2pt dashed #999; */
                 display: block;
             }
 
@@ -315,7 +325,7 @@ class ReciboController extends Controller
 
         return response($pdfContent, 200, [
             'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => "attachment; filename=\"boleta_{$idPago}.pdf\"",
+            'Content-Disposition' => "inline; filename=\"boleta_{$idPago}.pdf\"",
         ]);
     }
 

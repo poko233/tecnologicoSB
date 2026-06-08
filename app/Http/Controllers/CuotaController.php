@@ -33,6 +33,7 @@ class CuotaController extends Controller
 
         $query = DB::table('user')
             ->join('user_rol', 'user.id', '=', 'user_rol.id_user')
+            ->leftJoin('Estudiante', 'user.id', '=', 'Estudiante.id_usuario') 
             ->where('user_rol.id_rol', $rolEstudianteId)
             ->select(
                 'user.id',
@@ -40,7 +41,7 @@ class CuotaController extends Controller
                 'user.nombres',
                 'user.apellidoPaterno',
                 'user.apellidoMaterno',
-                'user.matricula',
+                'Estudiante.matricula', 
                 'user.email',
                 'user.telefono',
                 'user.celular',
@@ -52,7 +53,7 @@ class CuotaController extends Controller
         if (!empty($searchTerm)) {
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('user.ci', 'LIKE', "%{$searchTerm}%")
-                    ->orWhere('user.matricula', 'LIKE', "%{$searchTerm}%")
+                    ->orWhere('Estudiante.matricula', 'LIKE', "%{$searchTerm}%")    
                     ->orWhereRaw(
                         "CONCAT(user.nombres, ' ', user.apellidoPaterno, ' ', user.apellidoMaterno) LIKE ?",
                         ["%{$searchTerm}%"]
