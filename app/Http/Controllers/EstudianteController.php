@@ -14,6 +14,9 @@ class EstudianteController extends Controller
     {
         return response()->json([
             'estudiantes' => User::with(['numeroReferencias', 'roles'])
+                ->whereHas('roles', function ($query) {
+                    $query->where('rol.id', 2);
+                })
                 ->latest('id')
                 ->get()
         ]);
@@ -22,6 +25,9 @@ class EstudianteController extends Controller
     public function continuarInscripcion()
     {
         $estudiantes = User::with(['numeroReferencias', 'roles'])
+            ->whereHas('roles', function ($query) {
+                $query->where('rol.id', 2);
+            })
             ->whereDoesntHave('cuotas')
             ->whereDoesntHave('carreras')
             ->latest('id')
@@ -156,10 +162,11 @@ class EstudianteController extends Controller
 
     public function show(string $id)
     {
-        $estudiante = User::with([
-            'numeroReferencias',
-            'roles'
-        ])->findOrFail($id);
+        $estudiante = User::with(['numeroReferencias', 'roles'])
+            ->whereHas('roles', function ($query) {
+                $query->where('rol.id', 2);
+            })
+            ->findOrFail($id);
 
         return response()->json([
             'estudiante' => $estudiante
@@ -219,6 +226,8 @@ class EstudianteController extends Controller
                 'direccion' => $validated['direccion'],
                 'celular' => $validated['celular'],
             ]);
+
+            $estudiante->roles()->syncWithoutDetaching([2]);
 
             $estudiante->numeroReferencias()->updateOrCreate(
                 ['idUsuario' => $estudiante->id],
