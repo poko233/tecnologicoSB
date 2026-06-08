@@ -8,6 +8,21 @@ use Illuminate\Support\Facades\File;
 
 class DocumentoEstudianteController extends Controller
 {
+    private function archivoUrl(?string $ruta): ?string
+    {
+        if (!$ruta) {
+            return null;
+        }
+
+        if (str_starts_with($ruta, 'http')) {
+            return $ruta;
+        }
+
+        $base = rtrim(env('FILES_PUBLIC_URL', url('/')), '/');
+
+        return $base . '/' . ltrim($ruta, '/');
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -18,10 +33,7 @@ class DocumentoEstudianteController extends Controller
 
         $archivo = $request->file('archivo');
 
-        $nombreArchivo =
-            uniqid() . '_' .
-            time() . '.' .
-            $archivo->getClientOriginalExtension();
+        $nombreArchivo = uniqid() . '_' . time() . '.' . $archivo->getClientOriginalExtension();
 
         $destino = public_path('documentos-estudiantes');
 
@@ -56,10 +68,13 @@ class DocumentoEstudianteController extends Controller
                 'estadoDocumento' => 'Entregado',
             ]);
 
+            $documento = $documentoExistente->fresh();
+            $documento->url = $this->archivoUrl($documento->ubicacionArchivo);
+
             return response()->json([
                 'message' => 'Documento actualizado correctamente',
-                'documento' => $documentoExistente->fresh(),
-                'url' => asset($ruta),
+                'documento' => $documento,
+                'url' => $documento->url,
             ], 200);
         }
 
@@ -70,10 +85,12 @@ class DocumentoEstudianteController extends Controller
             'idUsuario' => $validated['idUsuario'],
         ]);
 
+        $documento->url = $this->archivoUrl($documento->ubicacionArchivo);
+
         return response()->json([
             'message' => 'Documento subido correctamente',
             'documento' => $documento,
-            'url' => asset($ruta),
+            'url' => $documento->url,
         ], 201);
     }
 
@@ -84,10 +101,14 @@ class DocumentoEstudianteController extends Controller
             ->latest('idDocumentoEstudiante')
             ->get()
             ->unique('nombreDocumento')
-            ->values();
+            ->values()
+            ->map(function ($documento) {
+                $documento->url = $this->archivoUrl($documento->ubicacionArchivo);
+                return $documento;
+            });
 
         return response()->json([
             'documentos' => $documentos,
         ]);
-    }
+    }    
 }
