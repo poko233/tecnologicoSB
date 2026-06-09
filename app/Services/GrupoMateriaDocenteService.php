@@ -31,6 +31,33 @@ class GrupoMateriaDocenteService
             ->orderBy('created_at', 'desc')
             ->get();
 
+        return $this->formatearGruposConInscritos($grupos);
+    }
+
+    /**
+     * Devuelve todos los grupos activos (para administrador),
+     * incluyendo el número de estudiantes inscritos en cada grupo.
+     *
+     * @return Collection
+     */
+    public function getTodosLosGrupos(): Collection
+    {
+        $grupos = GrupoMateriaDocente::with([
+            'grupo' => fn($q) => $q->where('estado', 'activo'),
+            'materia',
+        ])
+            ->whereHas('grupo', fn($q) => $q->where('estado', 'activo'))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return $this->formatearGruposConInscritos($grupos);
+    }
+
+    /**
+     * Formatea la colección de GMD añadiendo el conteo de inscritos.
+     */
+    private function formatearGruposConInscritos(Collection $grupos): Collection
+    {
         $inscripcionesCounts = Inscripcion::selectRaw('idGrupo, count(*) as total')
             ->whereIn('idGrupo', $grupos->pluck('idGrupo')->unique())
             ->groupBy('idGrupo')

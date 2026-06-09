@@ -24,19 +24,24 @@ class DocenteAsistenciaController extends Controller
 {
     /**
      * GET /api/docente/grupos-asignados
-     * Retorna los grupos activos asignados al docente, ordenados del más reciente al más antiguo.
+     * Retorna los grupos activos asignados al docente (o todos si es administrador).
      */
     public function gruposAsignados(Request $request): JsonResponse
     {
         $user = $request->user();
+        $esAdmin = $user->hasRole('Administrador');
 
-        $grupos = GrupoMateriaDocente::with([
+        $query = GrupoMateriaDocente::with([
             'grupo' => fn($q) => $q->where('estado', 'activo'),
             'materia.carreras' => fn($q) => $q->where('estadoCarrera', 'activo'),
         ])
-            ->where('idDocente', $user->id)
-            ->whereHas('grupo', fn($q) => $q->where('estado', 'activo'))
-            ->orderBy('created_at', 'desc')
+            ->whereHas('grupo', fn($q) => $q->where('estado', 'activo'));
+
+        if (!$esAdmin) {
+            $query->where('idDocente', $user->id);
+        }
+
+        $grupos = $query->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($gmd) {
                 $carrera = $gmd->materia->carreras->first();
@@ -60,9 +65,11 @@ class DocenteAsistenciaController extends Controller
      */
     public function estudiantes(int $idGrupoMateriaDocente, Request $request): JsonResponse
     {
+        $user = $request->user();
         $gmd = GrupoMateriaDocente::with(['grupo.horarios', 'materia.carreras'])->findOrFail($idGrupoMateriaDocente);
 
-        if ($gmd->idDocente !== $request->user()->id) {
+        $esAdmin = $user->hasRole('Administrador');
+        if (!$esAdmin && $gmd->idDocente !== $user->id) {
             return response()->json(['message' => 'No estás asignado a este grupo.'], 403);
         }
 
@@ -73,8 +80,7 @@ class DocenteAsistenciaController extends Controller
 
         $lista = $this->obtenerOCrearListaAsistencia($gmd, $carrera);
 
-        // Horarios del grupo (para ofrecer las posibles sesiones)
-        $horarios = $gmd->grupo->horarios;  // relación muchos a muchos a través de GrupoHorario
+        $horarios = $gmd->grupo->horarios;
 
         // Estudiantes activos inscritos
         $inscripciones = Inscripcion::with(['usuario.carreras'])
@@ -95,7 +101,7 @@ class DocenteAsistenciaController extends Controller
                         'idHorario' => $h->idHorario,
                         'horaInicio' => $h->horaInicio,
                         'horaFin' => $h->horaFin,
-                        'dia' => $h->dia,   // ← agregado
+                        'dia' => $h->dia,
                     ]),
                     'estudiantes' => [],
                 ],
@@ -127,7 +133,7 @@ class DocenteAsistenciaController extends Controller
                     'idHorario' => $horario->idHorario,
                     'horaInicio' => $horario->horaInicio,
                     'horaFin' => $horario->horaFin,
-                    'dia' => $horario->dia,   // ← agregado
+                    'dia' => $horario->dia,
                     'asistencia' => $asistencia ? [
                         'tipo' => $asistencia->tipo,
                         'observacion' => $asistencia->observacion,
@@ -141,7 +147,7 @@ class DocenteAsistenciaController extends Controller
                     'idHorario' => null,
                     'horaInicio' => 'Sin horario',
                     'horaFin' => '',
-                    'dia' => '',      // ← sin día cuando no hay horario
+                    'dia' => '',
                     'asistencia' => [
                         'tipo' => $asistenciaMap['sin_horario']->tipo,
                         'observacion' => $asistenciaMap['sin_horario']->observacion,
@@ -170,7 +176,7 @@ class DocenteAsistenciaController extends Controller
                     'idHorario' => $h->idHorario,
                     'horaInicio' => $h->horaInicio,
                     'horaFin' => $h->horaFin,
-                    'dia' => $h->dia,   // ← agregado
+                    'dia' => $h->dia,
                 ]),
                 'estudiantes' => $estudiantes,
             ],
@@ -205,6 +211,7 @@ class DocenteAsistenciaController extends Controller
             'data' => $asistencia,
         ], 200);
     }
+
     /**
      * POST /api/docente/asistencia/batch
      * Procesa un lote de asistencias de forma atómica.
@@ -213,6 +220,7 @@ class DocenteAsistenciaController extends Controller
     {
         $asistencias = $request->validated()['asistencias'];
         $user = $request->user();
+        $esAdmin = $user->hasRole('Administrador');
 
         // 1. Verificar que todas las listas de asistencia pertenezcan al docente
         $listaIds = array_unique(array_column($asistencias, 'id_lista_asistencia'));
@@ -221,12 +229,15 @@ class DocenteAsistenciaController extends Controller
             ->get()
             ->keyBy('idListaAsistencia');
 
-        foreach ($listaIds as $idLista) {
-            $lista = $listas->get($idLista);
-            if (!$lista || $lista->grupoMateriaDocente->idDocente !== $user->id) {
-                return response()->json([
-                    'message' => 'No tienes permiso para modificar la lista de asistencia proporcionada.',
-                ], 403);
+        // Solo verificar pertenencia si NO es administrador
+        if (!$esAdmin) {
+            foreach ($listaIds as $idLista) {
+                $lista = $listas->get($idLista);
+                if (!$lista || $lista->grupoMateriaDocente->idDocente !== $user->id) {
+                    return response()->json([
+                        'message' => 'No tienes permiso para modificar la lista de asistencia proporcionada.',
+                    ], 403);
+                }
             }
         }
 
@@ -257,6 +268,7 @@ class DocenteAsistenciaController extends Controller
             'errores' => [],
         ], 200);
     }
+
     /**
      * Obtiene o crea la ListaAsistencia según el régimen de la carrera.
      */
@@ -302,27 +314,23 @@ class DocenteAsistenciaController extends Controller
 
     public function reporteCsv(int $idGrupoMateriaDocente, Request $request): StreamedResponse
     {
-        $datos    = $this->obtenerDatosReporte($idGrupoMateriaDocente, $request);
+        $datos = $this->obtenerDatosReporte($idGrupoMateriaDocente, $request);
         $filename = 'asistencia_' . $datos['paralelo'] . '_' . $datos['periodo'] . '.csv';
- 
+
         return response()->streamDownload(function () use ($datos) {
             $handle = fopen('php://output', 'w');
- 
-            // BOM para que Excel abra tildes correctamente
+
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
- 
-            // Cabecera informativa
-            fputcsv($handle, ['Carrera',    $datos['carrera']]);
+
+            fputcsv($handle, ['Carrera', $datos['carrera']]);
             fputcsv($handle, ['Asignatura', $datos['asignatura']]);
-            fputcsv($handle, ['Docente',    $datos['docente']]);
-            fputcsv($handle, ['Paralelo',   $datos['paralelo']]);
-            fputcsv($handle, ['Período',    $datos['periodo']]);
+            fputcsv($handle, ['Docente', $datos['docente']]);
+            fputcsv($handle, ['Paralelo', $datos['paralelo']]);
+            fputcsv($handle, ['Período', $datos['periodo']]);
             fputcsv($handle, []);
- 
-            // Encabezados de columnas
+
             fputcsv($handle, ['N°', 'Estudiante', 'Carrera', ...$datos['fechas'], '% Asistencia']);
- 
-            // Filas de estudiantes
+
             foreach ($datos['filas'] as $i => $fila) {
                 $row = [$i + 1, $fila['nombre'], $fila['carrera']];
                 foreach ($datos['fechas'] as $fecha) {
@@ -331,51 +339,50 @@ class DocenteAsistenciaController extends Controller
                 $row[] = $fila['porcentaje'] . '%';
                 fputcsv($handle, $row);
             }
- 
+
             fclose($handle);
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
- 
+
     public function reportePdf(int $idGrupoMateriaDocente, Request $request)
     {
-        $datos    = $this->obtenerDatosReporte($idGrupoMateriaDocente, $request);
-        $pdf      = Pdf::loadView('reportes.asistencia', $datos)->setPaper('a4', 'landscape');
+        $datos = $this->obtenerDatosReporte($idGrupoMateriaDocente, $request);
+        $pdf = Pdf::loadView('reportes.asistencia', $datos)->setPaper('a4', 'landscape');
         $filename = 'asistencia_' . $datos['paralelo'] . '_' . $datos['periodo'] . '.pdf';
- 
+
         return $pdf->download($filename);
     }
- 
+
     private function obtenerDatosReporte(int $idGrupoMateriaDocente, Request $request): array
     {
         $user = $request->user();
- 
         $gmd = GrupoMateriaDocente::with(['grupo', 'materia.carreras', 'docente.usuario'])
             ->findOrFail($idGrupoMateriaDocente);
- 
-        if ($gmd->idDocente !== $user->id) {
+
+        $esAdmin = $user->hasRole('Administrador');
+        if (!$esAdmin && $gmd->idDocente !== $user->id) {
             abort(403, 'No estás asignado a este grupo.');
         }
- 
+
         $carrera = $gmd->materia->carreras()->where('estadoCarrera', 'activo')->first();
         if (!$carrera) {
             abort(400, 'No se encontró una carrera activa para esta materia.');
         }
- 
+
         $lista = ListaAsistencia::where('id_grupo_materia_docente', $idGrupoMateriaDocente)
             ->orderBy('fecha_inicio', 'desc')
             ->firstOrFail();
- 
+
         $inscripciones = Inscripcion::with('usuario.carreras')
             ->where('idGrupo', $gmd->idGrupo)
             ->whereHas('usuario', fn($q) => $q->where('estado', 'ACTIVO'))
             ->orderBy('idInscripcion')
             ->get();
- 
+
         $registros = ListaAsistenciaInscripcion::where('idListaAsistencia', $lista->idListaAsistencia)->get();
- 
-        // Fechas únicas ordenadas
+
         $fechas = $registros
             ->pluck('fecha')
             ->map(fn($f) => $f instanceof Carbon ? $f->toDateString() : (string) $f)
@@ -383,12 +390,11 @@ class DocenteAsistenciaController extends Controller
             ->sort()
             ->values()
             ->toArray();
- 
-        // Filas por estudiante
+
         $filas = $inscripciones->map(function ($inscripcion) use ($registros, $fechas) {
-            $user       = $inscripcion->usuario;
+            $user = $inscripcion->usuario;
             $carreraEst = $user->carreras()->where('estadoCarrera', 'activo')->first();
- 
+
             $porFecha = $registros
                 ->where('idInscripcion', $inscripcion->idInscripcion)
                 ->mapWithKeys(function ($r) {
@@ -396,46 +402,46 @@ class DocenteAsistenciaController extends Controller
                         ? $r->fecha->toDateString()
                         : (string) $r->fecha;
                     $abrev = match (strtolower($r->tipo)) {
-                        'presente'    => 'P',
-                        'ausente'     => 'A',
-                        'tardanza'    => 'T',
+                        'presente' => 'P',
+                        'ausente' => 'A',
+                        'tardanza' => 'T',
                         'justificado' => 'J',
-                        default       => strtoupper(substr($r->tipo, 0, 1)),
+                        default => strtoupper(substr($r->tipo, 0, 1)),
                     };
                     return [$fecha => $abrev];
                 });
- 
+
             $totalFechas = count($fechas);
-            $presentes   = $registros
+            $presentes = $registros
                 ->where('idInscripcion', $inscripcion->idInscripcion)
                 ->whereIn('tipo', ['presente', 'justificado', 'Presente', 'Justificado'])
                 ->count();
-            $porcentaje  = $totalFechas > 0 ? round(($presentes / $totalFechas) * 100, 1) : 0;
- 
+            $porcentaje = $totalFechas > 0 ? round(($presentes / $totalFechas) * 100, 1) : 0;
+
             return [
-                'nombre'      => trim("{$user->nombres} {$user->apellidoPaterno} {$user->apellidoMaterno}"),
-                'carrera'     => $carreraEst?->nombreCarrera ?? '-',
+                'nombre' => trim("{$user->nombres} {$user->apellidoPaterno} {$user->apellidoMaterno}"),
+                'carrera' => $carreraEst?->nombreCarrera ?? '-',
                 'asistencias' => $porFecha->toArray(),
-                'porcentaje'  => $porcentaje,
+                'porcentaje' => $porcentaje,
             ];
         })->values()->toArray();
- 
+
         $docente = $gmd->docente?->usuario
             ? trim("{$gmd->docente->usuario->nombres} {$gmd->docente->usuario->apellidoPaterno} {$gmd->docente->usuario->apellidoMaterno}")
             : trim("{$user->nombres} {$user->apellidoPaterno}");
- 
+
         return [
-            'carrera'      => $carrera->nombreCarrera,
-            'asignatura'   => $gmd->materia->nombreMateria,
-            'docente'      => $docente,
-            'paralelo'     => $gmd->grupo->nombre,
-            'turno'        => $gmd->grupo->turno ?? '-',   // ← SOLO ESTO SE AGREGA
-            'periodo'      => $lista->observacion
-                            ?? ($lista->fecha_inicio->format('d/m/Y') . ' – ' . $lista->fecha_fin->format('d/m/Y')),
+            'carrera' => $carrera->nombreCarrera,
+            'asignatura' => $gmd->materia->nombreMateria,
+            'docente' => $docente,
+            'paralelo' => $gmd->grupo->nombre,
+            'turno' => $gmd->grupo->turno ?? '-',
+            'periodo' => $lista->observacion
+                ?? ($lista->fecha_inicio->format('d/m/Y') . ' – ' . $lista->fecha_fin->format('d/m/Y')),
             'fecha_inicio' => $lista->fecha_inicio->format('d/m/Y'),
-            'fecha_fin'    => $lista->fecha_fin->format('d/m/Y'),
-            'fechas'       => $fechas,
-            'filas'        => $filas,
+            'fecha_fin' => $lista->fecha_fin->format('d/m/Y'),
+            'fechas' => $fechas,
+            'filas' => $filas,
         ];
     }
 }

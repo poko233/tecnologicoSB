@@ -76,12 +76,12 @@ Route::middleware('auth:sanctum')->group(function () {
     | Asistencia Docentes
     |--------------------------------------------------------------------------
     */
-    Route::middleware('role:Docente')->group(function () {
+    Route::middleware('role:Docente,Administrador')->group(function () {
         Route::get('/docente/grupos-asignados', [DocenteAsistenciaController::class, 'gruposAsignados']);
         Route::get('/docente/grupos-asignados/{idGrupoMateriaDocente}/estudiantes', [DocenteAsistenciaController::class, 'estudiantes']);
         Route::post('/docente/asistencia', [DocenteAsistenciaController::class, 'registrarAsistencia']);
         Route::post('/docente/asistencia/batch', [DocenteAsistenciaController::class, 'batch']);
-        
+
         Route::get('/notas/mis-grupos', [NotasController::class, 'misGrupos']);
 
         Route::post('/elementos-competencia/listar', [ElementoCompetenciaController::class, 'listar']);

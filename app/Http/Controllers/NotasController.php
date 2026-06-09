@@ -34,9 +34,13 @@ class NotasController extends Controller
      */
     public function misGrupos(Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $user = $request->user();
 
-        $grupos = $this->grupoService->getGruposDelDocente($userId);
+        if ($user->hasRole('Administrador')) {
+            $grupos = $this->grupoService->getTodosLosGrupos();
+        } else {
+            $grupos = $this->grupoService->getGruposDelDocente($user->id);
+        }
 
         return response()->json([
             'data' => GrupoMateriaDocenteResource::collection($grupos),
