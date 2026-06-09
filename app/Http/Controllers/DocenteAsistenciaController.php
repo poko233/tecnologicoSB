@@ -16,6 +16,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 
 class DocenteAsistenciaController extends Controller
@@ -296,5 +298,144 @@ class DocenteAsistenciaController extends Controller
                 'observacion' => "{$carrera->regimen} {$inicio->format('Y-m')}",
             ]
         );
+    }
+
+    public function reporteCsv(int $idGrupoMateriaDocente, Request $request): StreamedResponse
+    {
+        $datos    = $this->obtenerDatosReporte($idGrupoMateriaDocente, $request);
+        $filename = 'asistencia_' . $datos['paralelo'] . '_' . $datos['periodo'] . '.csv';
+ 
+        return response()->streamDownload(function () use ($datos) {
+            $handle = fopen('php://output', 'w');
+ 
+            // BOM para que Excel abra tildes correctamente
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+ 
+            // Cabecera informativa
+            fputcsv($handle, ['Carrera',    $datos['carrera']]);
+            fputcsv($handle, ['Asignatura', $datos['asignatura']]);
+            fputcsv($handle, ['Docente',    $datos['docente']]);
+            fputcsv($handle, ['Paralelo',   $datos['paralelo']]);
+            fputcsv($handle, ['Período',    $datos['periodo']]);
+            fputcsv($handle, []);
+ 
+            // Encabezados de columnas
+            fputcsv($handle, ['N°', 'Estudiante', 'Carrera', ...$datos['fechas'], '% Asistencia']);
+ 
+            // Filas de estudiantes
+            foreach ($datos['filas'] as $i => $fila) {
+                $row = [$i + 1, $fila['nombre'], $fila['carrera']];
+                foreach ($datos['fechas'] as $fecha) {
+                    $row[] = $fila['asistencias'][$fecha] ?? '-';
+                }
+                $row[] = $fila['porcentaje'] . '%';
+                fputcsv($handle, $row);
+            }
+ 
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+ 
+    public function reportePdf(int $idGrupoMateriaDocente, Request $request)
+    {
+        $datos    = $this->obtenerDatosReporte($idGrupoMateriaDocente, $request);
+        $pdf      = Pdf::loadView('reportes.asistencia', $datos)->setPaper('a4', 'landscape');
+        $filename = 'asistencia_' . $datos['paralelo'] . '_' . $datos['periodo'] . '.pdf';
+ 
+        return $pdf->download($filename);
+    }
+ 
+    private function obtenerDatosReporte(int $idGrupoMateriaDocente, Request $request): array
+    {
+        $user = $request->user();
+ 
+        $gmd = GrupoMateriaDocente::with(['grupo', 'materia.carreras', 'docente.usuario'])
+            ->findOrFail($idGrupoMateriaDocente);
+ 
+        if ($gmd->idDocente !== $user->id) {
+            abort(403, 'No estás asignado a este grupo.');
+        }
+ 
+        $carrera = $gmd->materia->carreras()->where('estadoCarrera', 'activo')->first();
+        if (!$carrera) {
+            abort(400, 'No se encontró una carrera activa para esta materia.');
+        }
+ 
+        $lista = ListaAsistencia::where('id_grupo_materia_docente', $idGrupoMateriaDocente)
+            ->orderBy('fecha_inicio', 'desc')
+            ->firstOrFail();
+ 
+        $inscripciones = Inscripcion::with('usuario.carreras')
+            ->where('idGrupo', $gmd->idGrupo)
+            ->whereHas('usuario', fn($q) => $q->where('estado', 'ACTIVO'))
+            ->orderBy('idInscripcion')
+            ->get();
+ 
+        $registros = ListaAsistenciaInscripcion::where('idListaAsistencia', $lista->idListaAsistencia)->get();
+ 
+        // Fechas únicas ordenadas
+        $fechas = $registros
+            ->pluck('fecha')
+            ->map(fn($f) => $f instanceof Carbon ? $f->toDateString() : (string) $f)
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
+ 
+        // Filas por estudiante
+        $filas = $inscripciones->map(function ($inscripcion) use ($registros, $fechas) {
+            $user       = $inscripcion->usuario;
+            $carreraEst = $user->carreras()->where('estadoCarrera', 'activo')->first();
+ 
+            $porFecha = $registros
+                ->where('idInscripcion', $inscripcion->idInscripcion)
+                ->mapWithKeys(function ($r) {
+                    $fecha = $r->fecha instanceof Carbon
+                        ? $r->fecha->toDateString()
+                        : (string) $r->fecha;
+                    $abrev = match (strtolower($r->tipo)) {
+                        'presente'    => 'P',
+                        'ausente'     => 'A',
+                        'tardanza'    => 'T',
+                        'justificado' => 'J',
+                        default       => strtoupper(substr($r->tipo, 0, 1)),
+                    };
+                    return [$fecha => $abrev];
+                });
+ 
+            $totalFechas = count($fechas);
+            $presentes   = $registros
+                ->where('idInscripcion', $inscripcion->idInscripcion)
+                ->whereIn('tipo', ['presente', 'justificado', 'Presente', 'Justificado'])
+                ->count();
+            $porcentaje  = $totalFechas > 0 ? round(($presentes / $totalFechas) * 100, 1) : 0;
+ 
+            return [
+                'nombre'      => trim("{$user->nombres} {$user->apellidoPaterno} {$user->apellidoMaterno}"),
+                'carrera'     => $carreraEst?->nombreCarrera ?? '-',
+                'asistencias' => $porFecha->toArray(),
+                'porcentaje'  => $porcentaje,
+            ];
+        })->values()->toArray();
+ 
+        $docente = $gmd->docente?->usuario
+            ? trim("{$gmd->docente->usuario->nombres} {$gmd->docente->usuario->apellidoPaterno} {$gmd->docente->usuario->apellidoMaterno}")
+            : trim("{$user->nombres} {$user->apellidoPaterno}");
+ 
+        return [
+            'carrera'      => $carrera->nombreCarrera,
+            'asignatura'   => $gmd->materia->nombreMateria,
+            'docente'      => $docente,
+            'paralelo'     => $gmd->grupo->nombre,
+            'turno'        => $gmd->grupo->turno ?? '-',   // ← SOLO ESTO SE AGREGA
+            'periodo'      => $lista->observacion
+                            ?? ($lista->fecha_inicio->format('d/m/Y') . ' – ' . $lista->fecha_fin->format('d/m/Y')),
+            'fecha_inicio' => $lista->fecha_inicio->format('d/m/Y'),
+            'fecha_fin'    => $lista->fecha_fin->format('d/m/Y'),
+            'fechas'       => $fechas,
+            'filas'        => $filas,
+        ];
     }
 }

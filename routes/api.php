@@ -68,6 +68,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/docentes/{idDocente}', [DocenteController::class, 'destroy']);
     Route::put('/docentes/{idDocente}/activar', [DocenteController::class, 'activar']);
 
+
+    Route::get('/docente/grupos-asignados/{idGrupoMateriaDocente}/reporte/csv', [DocenteAsistenciaController::class, 'reporteCsv']);
+    Route::get('/docente/grupos-asignados/{idGrupoMateriaDocente}/reporte/pdf', [DocenteAsistenciaController::class, 'reportePdf']);
     /*
     |--------------------------------------------------------------------------
     | Asistencia Docentes
@@ -78,7 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/docente/grupos-asignados/{idGrupoMateriaDocente}/estudiantes', [DocenteAsistenciaController::class, 'estudiantes']);
         Route::post('/docente/asistencia', [DocenteAsistenciaController::class, 'registrarAsistencia']);
         Route::post('/docente/asistencia/batch', [DocenteAsistenciaController::class, 'batch']);
-
+        
         Route::get('/notas/mis-grupos', [NotasController::class, 'misGrupos']);
 
         Route::post('/elementos-competencia/listar', [ElementoCompetenciaController::class, 'listar']);
