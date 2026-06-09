@@ -34,6 +34,7 @@ use App\Http\Controllers\DocenteAsistenciaController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\ReciboController;
 use App\Http\Controllers\QrController;
+use App\Http\Controllers\PlanillaReporteController;
 
 Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
 
@@ -91,6 +92,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/planilla', [NotasController::class, 'planilla']);
         Route::post('/planilla/guardar', [NotasController::class, 'guardarNotas']);
     });
+    Route::get('/reportes/{idGrupoMateriaDocente}/excel',   [PlanillaReporteController::class, 'excel']);
+    Route::get('/reportes/{idGrupoMateriaDocente}/pdf',     [PlanillaReporteController::class, 'pdf']);
+    Route::get('/reportes/{idGrupoMateriaDocente}/pdf/ver', [PlanillaReporteController::class, 'pdfVer']);
 
     /*
     |--------------------------------------------------------------------------
