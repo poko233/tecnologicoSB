@@ -222,15 +222,17 @@ class QrController extends Controller
         }
 
         // Registrar el acceso en auditoría
+        // Obtener ubicación automáticamente (o fallback)
+        $ubicacion = $this->obtenerUbicacion();
+
         $registro = RegistroAcceso::create([
             'user_id' => $user->id,
             'tipo_persona' => $tipoPersona,
             'estado_mostrado' => $estadoMostrado,
             'color_alerta' => $colorAlerta,
-            'punto_control' => $puntoControl,
+            'punto_control' => $puntoControl ?: $ubicacion,   // el frontend puede sobrescribir si quiere
             'fecha_hora' => now(),
         ]);
-
         // Construir respuesta
         $respuestaUsuario = array_merge($datosUsuario, [
             'id' => $user->id,
@@ -317,5 +319,34 @@ class QrController extends Controller
         }
 
         return array_merge($base, $extras);
+    }
+    private function obtenerUbicacion(): string
+    {
+        try {
+            // La IP del cliente que hace la petición
+            $ip = request()->ip();
+
+            // Intentar ip-api.com (HTTP, pero desde el servidor no hay problema)
+            $response = file_get_contents("http://ip-api.com/json/{$ip}?fields=city,country,lat,lon,isp,query");
+            if ($response === false) {
+                throw new \Exception('Sin respuesta de ip-api');
+            }
+
+            $data = json_decode($response, true);
+            if (json_last_error() !== JSON_ERROR_NONE || !isset($data['city'])) {
+                throw new \Exception('Respuesta inválida de ip-api');
+            }
+
+            $parts = array_filter([
+                $data['city'] ?? null,
+                $data['country'] ?? null,
+                $data['isp'] ?? null,
+                $data['query'] ?? null,
+            ]);
+            return implode(', ', $parts);
+        } catch (\Throwable $e) {
+            \Log::warning('No se pudo obtener ubicación por IP: ' . $e->getMessage());
+            return 'Entrada principal a las instalaciones';
+        }
     }
 }
