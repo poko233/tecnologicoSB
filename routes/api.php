@@ -35,6 +35,7 @@ use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\ReciboController;
 use App\Http\Controllers\QrController;
 use App\Http\Controllers\PlanillaReporteController;
+use App\Http\Controllers\ReporteCalificacionesController;
 
 Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
 
@@ -96,6 +97,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reportes/{idGrupoMateriaDocente}/pdf',     [PlanillaReporteController::class, 'pdf']);
     Route::get('/reportes/{idGrupoMateriaDocente}/pdf/ver', [PlanillaReporteController::class, 'pdfVer']);
 
+
+    Route::get('/reportes/calificaciones/preview', [ReporteCalificacionesController::class, 'preview']);
+    Route::get('/reportes/calificaciones/xlsx',    [ReporteCalificacionesController::class, 'xlsx']);
+    Route::get('/reportes/calificaciones/pdf',     [ReporteCalificacionesController::class, 'pdf']);
     /*
     |--------------------------------------------------------------------------
     | Inscripción estudiante
