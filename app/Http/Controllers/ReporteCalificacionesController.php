@@ -84,4 +84,13 @@ class ReporteCalificacionesController extends Controller
 
         return (new CalificacionesPdfExport($datos, $gestion))->download($filename);
     }
+
+    public function filtros()
+    {
+        $filtros = $this->service->obtenerOpcionesFiltros();
+        
+        return response()->json([
+            'data' => $filtros,
+        ]);
+    }
 }

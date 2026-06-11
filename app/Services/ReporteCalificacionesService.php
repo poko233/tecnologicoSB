@@ -100,4 +100,44 @@ class ReporteCalificacionesService
         
         return $resultado;
     }
+
+    public function obtenerOpcionesFiltros(): array
+    {
+        // Carreras que tienen estudiantes con notas
+        $carreras = DB::table('Carrera as c')
+            ->join('CarreraMateria as cm', 'cm.idCarrera', '=', 'c.idCarrera')
+            ->join('GrupoMateriaDocente as gmd', 'gmd.idMateria', '=', 'cm.idMateria')
+            ->join('NotaFinal as nf', 'nf.id_grupo_materia_docente', '=', 'gmd.idGrupoMateriaDocente')
+            ->select('c.idCarrera', 'c.nombreCarrera', 'c.codigo')
+            ->where('c.estadoCarrera', 'activo')
+            ->distinct()
+            ->orderBy('c.nombreCarrera')
+            ->get();
+
+        // Gestiones disponibles
+        $gestiones = DB::table('Grupo as g')
+            ->join('GrupoMateriaDocente as gmd', 'gmd.idGrupo', '=', 'g.idGrupo')
+            ->join('NotaFinal as nf', 'nf.id_grupo_materia_docente', '=', 'gmd.idGrupoMateriaDocente')
+            ->select('g.gestion')
+            ->distinct()
+            ->orderBy('g.gestion')
+            ->pluck('gestion');
+
+        // Turnos disponibles
+        $turnos = DB::table('Grupo as g')
+            ->join('GrupoMateriaDocente as gmd', 'gmd.idGrupo', '=', 'g.idGrupo')
+            ->join('NotaFinal as nf', 'nf.id_grupo_materia_docente', '=', 'gmd.idGrupoMateriaDocente')
+            ->select('g.turno')
+            ->whereNotNull('g.turno')
+            ->distinct()
+            ->orderBy('g.turno')
+            ->pluck('g.turno');
+
+        return [
+            'carreras'  => $carreras,
+            'gestiones' => $gestiones,
+            'turnos'    => $turnos,
+        ];
+    }
+
 }
