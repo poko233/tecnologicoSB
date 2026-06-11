@@ -36,6 +36,16 @@ use App\Http\Controllers\ReciboController;
 use App\Http\Controllers\QrController;
 use App\Http\Controllers\PlanillaReporteController;
 use App\Http\Controllers\ReporteCalificacionesController;
+use App\Http\Controllers\ReporteInscritosController;
+use App\Http\Controllers\ReporteListaGrupoController;
+
+Route::get('/reportes/lista-grupo/filtros', [ReporteListaGrupoController::class, 'filtros']);
+Route::get('/reportes/lista-grupo/xlsx',    [ReporteListaGrupoController::class, 'xlsx']);
+Route::get('/reportes/lista-grupo/pdf',     [ReporteListaGrupoController::class, 'pdf']);
+
+Route::get('/reportes/inscritos-carrera/filtros', [ReporteInscritosController::class, 'filtros']);
+Route::get('/reportes/inscritos-carrera/xlsx',    [ReporteInscritosController::class, 'xlsx']);
+Route::get('/reportes/inscritos-carrera/pdf',     [ReporteInscritosController::class, 'pdf']);
 
 Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
 Route::get('/reportes/calificaciones/preview', [ReporteCalificacionesController::class, 'preview']);
