@@ -9,10 +9,12 @@
         "php": "^8.3",
         "bacon/bacon-qr-code": "^3.1",
         "barryvdh/laravel-dompdf": "^3.1",
+        "barryvdh/laravel-snappy": "^1.0",
         "dompdf/dompdf": "^3.1",
         "laravel/framework": "^13.7",
         "laravel/sanctum": "*",
         "laravel/tinker": "^3.0",
+        "mpdf/mpdf": "^8.3",
         "phpoffice/phpspreadsheet": "^5.8"
     },
     "require-dev": {

@@ -47,32 +47,38 @@ class ReporteCalificacionesController extends Controller
     public function xlsx(Request $request)
     {
         $gestion = $request->string('gestion') ?: null;
+        $turno = $request->string('turno') ?: null;
 
-        $datos = $this->service->obtenerDatos(
+        $datos = $this->service->obtenerDatosHorizontal(
             idCarrera: $request->integer('idCarrera') ?: null,
-            gestion:   $gestion,
+            gestion: $gestion,
+            turno: $turno,
         );
 
+        // Reemplazar / por - en el nombre del archivo
+        $filenameGestion = $gestion ? str_replace(['/', '\\'], '-', $gestion) : '';
         $filename = 'centralizador_calificaciones'
-            . ($gestion ? "_{$gestion}" : '')
+            . ($filenameGestion ? "_{$filenameGestion}" : '')
             . '_' . now()->format('Ymd_His')
             . '.xlsx';
 
-        return (new CalificacionesExport($datos, $gestion))->stream($filename);
+        return (new CalificacionesExport($datos))->stream($filename);
     }
 
     
     public function pdf(Request $request)
     {
         $gestion = $request->string('gestion') ?: null;
+        $turno = $request->string('turno') ?: null;
 
-        $datos = $this->service->obtenerDatos(
+        $datos = $this->service->obtenerDatosHorizontal(
             idCarrera: $request->integer('idCarrera') ?: null,
-            gestion:   $gestion,
+            gestion: $gestion,
+            turno: $turno,
         );
 
         $filename = 'centralizador_calificaciones'
-            . ($gestion ? "_{$gestion}" : '')
+            . ($gestion ? '_' . str_replace(['/', '\\'], '-', $gestion) : '')
             . '_' . now()->format('Ymd_His')
             . '.pdf';
 

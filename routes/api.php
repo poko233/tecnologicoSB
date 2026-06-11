@@ -93,14 +93,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/planilla', [NotasController::class, 'planilla']);
         Route::post('/planilla/guardar', [NotasController::class, 'guardarNotas']);
     });
+    Route::get('/reportes/calificaciones/preview', [ReporteCalificacionesController::class, 'preview']);
+    Route::get('/reportes/calificaciones/xlsx',    [ReporteCalificacionesController::class, 'xlsx']);
+    Route::get('/reportes/calificaciones/pdf',     [ReporteCalificacionesController::class, 'pdf']);
+
+    
     Route::get('/reportes/{idGrupoMateriaDocente}/excel',   [PlanillaReporteController::class, 'excel']);
     Route::get('/reportes/{idGrupoMateriaDocente}/pdf',     [PlanillaReporteController::class, 'pdf']);
     Route::get('/reportes/{idGrupoMateriaDocente}/pdf/ver', [PlanillaReporteController::class, 'pdfVer']);
 
 
-    Route::get('/reportes/calificaciones/preview', [ReporteCalificacionesController::class, 'preview']);
-    Route::get('/reportes/calificaciones/xlsx',    [ReporteCalificacionesController::class, 'xlsx']);
-    Route::get('/reportes/calificaciones/pdf',     [ReporteCalificacionesController::class, 'pdf']);
+   
     /*
     |--------------------------------------------------------------------------
     | Inscripción estudiante

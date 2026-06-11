@@ -5,342 +5,266 @@ namespace App\Exports;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Font;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 
 class CalificacionesExport
 {
-    // Paleta
-    const AZUL_OSCURO  = 'FF1F3864';
-    const AZUL_MEDIO   = 'FF2E75B6';
-    const AZUL_CLARO   = 'FFBDD7EE';
-    const GRIS_HEADER  = 'FFD6DCE4';
-    const VERDE_APRO   = 'FFE2EFDA';
-    const ROJO_REPR    = 'FFFCE4D6';
-    const AMARILLO_2DA = 'FFFFF2CC';
-    const BLANCO       = 'FFFFFFFF';
-    const NEGRO        = 'FF000000';
+    const BLANCO      = 'FFFFFFFF';
+    const NEGRO       = 'FF000000';
+    const GRIS_HEADER = 'FFD9D9D9';
 
     private Spreadsheet $spreadsheet;
 
-    public function __construct(private array $datos, private ?string $gestion = null)
+    public function __construct(private array $datos)
     {
         $this->spreadsheet = new Spreadsheet();
-        $this->spreadsheet->removeSheetByIndex(0); // elimina hoja por defecto
     }
 
     public function build(): Spreadsheet
     {
-        $this->crearHojaIndice();
-
-        foreach ($this->datos as $carrera) {
-            $this->crearHojaCarrera($carrera);
+        if (empty($this->datos)) {
+            $ws = $this->spreadsheet->getActiveSheet();
+            $ws->setTitle('SIN DATOS');
+            $ws->setCellValue('A1', 'No se encontraron resultados.');
+            $ws->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+            $ws->getColumnDimension('A')->setWidth(50);
+            return $this->spreadsheet;
         }
 
-        $this->crearHojaLeyenda();
+        foreach ($this->datos as $index => $data) {
+            $ws = ($index === 0)
+                ? $this->spreadsheet->getActiveSheet()
+                : $this->spreadsheet->createSheet();
+            $this->crearHoja($data, $ws);
+        }
 
-        // Activar primera hoja al abrir
         $this->spreadsheet->setActiveSheetIndex(0);
-
         return $this->spreadsheet;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // HOJA ÍNDICE
-    // ─────────────────────────────────────────────────────────────────────────
-    private function crearHojaIndice(): void
+    private function crearHoja(array $data, $ws): void
     {
-        $ws = $this->spreadsheet->createSheet();
-        $ws->setTitle('ÍNDICE');
-        // $ws->getSheetView()->setShowGridLines(false);
+        // ── DATOS ────────────────────────────────────────────────────
+        $carrera     = (array) $data['carrera'];
+        $materias    = array_map(fn($m) => (array) $m, $data['materias']);
+        $estudiantes = array_map(fn($e) => (array) $e, $data['estudiantes']);
+        $turno       = strtoupper($data['turno']   ?? '');
+        $gestion     = strtoupper($data['gestion'] ?? '');
+
+        $nombreHoja = mb_substr($carrera['codigo'] ?: $carrera['nombre'], 0, 28);
+        $ws->setTitle($nombreHoja);
         $ws->setShowGridlines(false);
 
-        foreach (['A' => 5, 'B' => 14, 'C' => 42, 'D' => 18, 'E' => 22, 'F' => 12] as $col => $w) {
-            $ws->getColumnDimension($col)->setWidth($w);
+        // ── DIMENSIONES ───────────────────────────────────────────────
+        $totalMaterias  = count($materias);
+        $colEstado      = 3 + $totalMaterias + 1;
+        $colObservacion = $colEstado + 1;
+        $ultimaCol      = Coordinate::stringFromColumnIndex($colObservacion);
+
+        // ── ANCHOS ────────────────────────────────────────────────────
+        $ws->getColumnDimension('A')->setWidth(13);
+        $ws->getColumnDimension('B')->setWidth(28);
+        $ws->getColumnDimension('C')->setWidth(16);
+        $ws->getColumnDimension('F')->setWidth(8);
+        $ws->getColumnDimension('G')->setWidth(12);
+
+        for ($i = 0; $i < $totalMaterias; $i++) {
+            $ws->getColumnDimension(Coordinate::stringFromColumnIndex(4 + $i))->setWidth(5.5);
+        }
+        $ws->getColumnDimension(Coordinate::stringFromColumnIndex($colEstado))->setWidth(11);
+        $ws->getColumnDimension(Coordinate::stringFromColumnIndex($colObservacion))->setWidth(14);
+
+        // ── ESTILOS ───────────────────────────────────────────────────
+        $borderThin = [
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => self::NEGRO]]],
+        ];
+        $borderMedium = [
+            'borders' => ['outline' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => self::NEGRO]]],
+        ];
+        $fillBlanco = ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::BLANCO]];
+        $fillGris   = ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::GRIS_HEADER]];
+
+        $styleLabel = [
+            'font'      => ['bold' => true,  'size' => 9, 'name' => 'Arial'],
+            'fill'      => $fillBlanco,
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+        $styleValue = [
+            'font'      => ['bold' => false, 'size' => 9, 'name' => 'Arial'],
+            'fill'      => $fillBlanco,
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+
+        // ══════════════════════════════════════════════════════════════
+        //  LOGO + TÍTULO (Filas 1-3)
+        // ══════════════════════════════════════════════════════════════
+        $ws->getRowDimension(1)->setRowHeight(20);
+        $ws->getRowDimension(2)->setRowHeight(20);
+        $ws->getRowDimension(3)->setRowHeight(20);
+
+        $logoPath = public_path('empresa/logo_largo.png');
+        if (file_exists($logoPath)) {
+            $drawing = new Drawing();
+            $drawing->setName('Logo');
+            $drawing->setPath($logoPath);
+            $drawing->setHeight(55);
+            $drawing->setCoordinates('A1');
+            $drawing->setOffsetX(3);
+            $drawing->setOffsetY(3);
+            $drawing->setWorksheet($ws);
         }
 
-        // Título
-        $ws->mergeCells('A1:F1');
-        $this->estilo($ws, 'A1:F1', [
-            'font'      => ['bold' => true, 'color' => self::BLANCO, 'size' => 14],
-            'fill'      => self::AZUL_OSCURO,
-            'alignment' => 'center',
+        $colD = Coordinate::stringFromColumnIndex(4);
+        $ws->mergeCells("{$colD}1:{$ultimaCol}3");
+        $ws->setCellValue("{$colD}1", 'CENTRALIZADOR DE CALIFICACIONES');
+        $ws->getStyle("{$colD}1:{$ultimaCol}3")->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 14, 'name' => 'Arial', 'color' => ['argb' => self::NEGRO]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'fill'      => $fillBlanco,
         ]);
-        $ws->setCellValue('A1', 'CENTRALIZADOR DE CALIFICACIONES');
-        $ws->getRowDimension(1)->setRowHeight(28);
+        $ws->getStyle("A1:{$ultimaCol}3")->applyFromArray($borderMedium);
 
-        $gestion = $this->gestion ? "GESTIÓN {$this->gestion}" : 'TODAS LAS GESTIONES';
-        $ws->mergeCells('A2:F2');
-        $this->estilo($ws, 'A2:F2', [
-            'font'      => ['color' => self::BLANCO, 'size' => 10],
-            'fill'      => self::AZUL_MEDIO,
-            'alignment' => 'center',
+        // ══════════════════════════════════════════════════════════════
+        //  INFO (Filas 4-8)
+        // ══════════════════════════════════════════════════════════════
+        $fila = 4;
+
+        // ── FILA 4: INSTITUCIÓN | TURNO ──────────────────────────────
+        $ws->mergeCells("B{$fila}:E{$fila}");
+        $ws->mergeCells("G{$fila}:{$ultimaCol}{$fila}");
+        $ws->setCellValue("A{$fila}", 'INSTITUCIÓN:');                  $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
+        $ws->setCellValue("B{$fila}", 'INSTITUTO TECNOLÓGICO DEL SUR'); $ws->getStyle("B{$fila}")->applyFromArray($styleValue);
+        $ws->setCellValue("F{$fila}", 'TURNO:');                        $ws->getStyle("F{$fila}")->applyFromArray($styleLabel);
+        $ws->setCellValue("G{$fila}", $turno);                          $ws->getStyle("G{$fila}")->applyFromArray($styleValue);
+        $ws->getStyle("A{$fila}:{$ultimaCol}{$fila}")->applyFromArray($borderThin);
+        $ws->getRowDimension($fila)->setRowHeight(15);
+        $fila++;
+
+        // ── FILA 5: GESTIÓN ───────────────────────────────────────────
+        $ws->mergeCells("B{$fila}:{$ultimaCol}{$fila}");
+        $ws->setCellValue("A{$fila}", 'GESTIÓN:'); $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
+        $ws->setCellValue("B{$fila}", $gestion);   $ws->getStyle("B{$fila}")->applyFromArray($styleValue);
+        $ws->getStyle("A{$fila}:{$ultimaCol}{$fila}")->applyFromArray($borderThin);
+        $ws->getRowDimension($fila)->setRowHeight(15);
+        $fila++;
+
+        // ── FILA 6: NIVEL ─────────────────────────────────────────────
+        $ws->mergeCells("B{$fila}:{$ultimaCol}{$fila}");
+        $ws->setCellValue("A{$fila}", 'NIVEL:');           $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
+        $ws->setCellValue("B{$fila}", 'TÉCNICO SUPERIOR'); $ws->getStyle("B{$fila}")->applyFromArray($styleValue);
+        $ws->getStyle("A{$fila}:{$ultimaCol}{$fila}")->applyFromArray($borderThin);
+        $ws->getRowDimension($fila)->setRowHeight(15);
+        $fila++;
+
+        // ── FILA 7: CARRERA ───────────────────────────────────────────
+        $ws->mergeCells("B{$fila}:{$ultimaCol}{$fila}");
+        $ws->setCellValue("A{$fila}", 'CARRERA:');                     $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
+        $ws->setCellValue("B{$fila}", strtoupper($carrera['nombre'])); $ws->getStyle("B{$fila}")->applyFromArray($styleValue);
+        $ws->getStyle("A{$fila}:{$ultimaCol}{$fila}")->applyFromArray($borderThin);
+        $ws->getRowDimension($fila)->setRowHeight(15);
+        $fila++;
+
+        // ── FILA 8: RÉGIMEN | CURSO ───────────────────────────────────
+        $ws->mergeCells("B{$fila}:C{$fila}");
+        $ws->mergeCells("E{$fila}:{$ultimaCol}{$fila}");
+        $ws->setCellValue("A{$fila}", 'RÉGIMEN:');                          $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
+        $ws->setCellValue("B{$fila}", strtoupper($carrera['regimen']));     $ws->getStyle("B{$fila}")->applyFromArray($styleValue);
+        $ws->setCellValue("D{$fila}", 'CURSO:');                            $ws->getStyle("D{$fila}")->applyFromArray($styleLabel);
+        $ws->setCellValue("E{$fila}", strtoupper($carrera['curso'] ?? '')); $ws->getStyle("E{$fila}")->applyFromArray($styleValue);
+        $ws->getStyle("A{$fila}:{$ultimaCol}{$fila}")->applyFromArray($borderThin);
+        $ws->getRowDimension($fila)->setRowHeight(15);
+        $fila++;
+
+        // ══════════════════════════════════════════════════════════════
+        //  CABECERA TABLA NOTAS
+        // ══════════════════════════════════════════════════════════════
+        $styleCabecera = array_merge($borderThin, $fillGris, [
+            'font'      => ['bold' => true, 'size' => 7, 'name' => 'Arial'],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
         ]);
-        $ws->setCellValue('A2', "$gestion  |  Generado: " . now()->format('d/m/Y H:i'));
-        $ws->getRowDimension(2)->setRowHeight(18);
+        $styleMateria = array_merge($styleCabecera, [
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_BOTTOM, 'wrapText' => true, 'textRotation' => 90],
+        ]);
 
-        // Cabeceras
-        $headers = ['N°', 'CÓDIGO', 'CARRERA', 'RÉGIMEN', 'PERÍODO/DURACIÓN', 'GRUPOS'];
-        foreach ($headers as $i => $h) {
-            $col = Coordinate::stringFromColumnIndex($i + 1);
-            $ws->setCellValue("{$col}4", $h);
-            $this->estilo($ws, "{$col}4", [
-                'font'      => ['bold' => true],
-                'fill'      => self::GRIS_HEADER,
-                'alignment' => 'center',
-                'border'    => true,
-            ]);
+        $ws->setCellValue("A{$fila}", 'N°');                    $ws->getStyle("A{$fila}")->applyFromArray($styleCabecera);
+        $ws->setCellValue("B{$fila}", 'NÓMINA DE ESTUDIANTES'); $ws->getStyle("B{$fila}")->applyFromArray($styleCabecera);
+        $ws->setCellValue("C{$fila}", 'CÉDULA DE IDENTIDAD');   $ws->getStyle("C{$fila}")->applyFromArray($styleCabecera);
+
+        foreach ($materias as $idx => $mat) {
+            $col    = Coordinate::stringFromColumnIndex(4 + $idx);
+            $codigo = $mat['codigo'] ?? ('M' . ($mat['idMateria'] ?? ''));
+            $nombre = strtoupper(trim($mat['nombreMateria'] ?? ''));
+            $ws->setCellValue("{$col}{$fila}", $codigo . "\n" . $nombre);
+            $ws->getStyle("{$col}{$fila}")->applyFromArray($styleMateria);
         }
-        $ws->getRowDimension(4)->setRowHeight(18);
 
-        foreach ($this->datos as $idx => $car) {
-            $fila = 5 + $idx;
-            $row  = [$idx + 1, $car['codigo'], $car['nombre'],
-                     strtoupper($car['regimen']),
-                     "{$car['duracion']} AÑO(S)",
-                     count($car['grupos'])];
+        $colEstadoL = Coordinate::stringFromColumnIndex($colEstado);
+        $ws->setCellValue("{$colEstadoL}{$fila}", 'ESTADO');
+        $ws->getStyle("{$colEstadoL}{$fila}")->applyFromArray($styleCabecera);
+
+        $colObsL = Coordinate::stringFromColumnIndex($colObservacion);
+        $ws->setCellValue("{$colObsL}{$fila}", 'OBSERVACIONES');
+        $ws->getStyle("{$colObsL}{$fila}")->applyFromArray($styleMateria);
+
+        $ws->getRowDimension($fila)->setRowHeight(120);
+        $fila++;
+
+        // ══════════════════════════════════════════════════════════════
+        //  ESTUDIANTES
+        // ══════════════════════════════════════════════════════════════
+        $styleEst = array_merge($borderThin, $fillBlanco, [
+            'font'      => ['name' => 'Arial', 'size' => 8],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+
+        $n = 1;
+        foreach ($estudiantes as $est) {
+            $estado = strtoupper($est['estado'] ?? '');
+            $row = [$n++, $est['nombreEstudiante'] ?? '', $est['carnet'] ?? ''];
+
+            foreach ($materias as $mat) {
+                $codigo = $mat['codigo'] ?? ('M' . ($mat['idMateria'] ?? ''));
+                $nota   = $est[$codigo] ?? '';
+                $row[]  = is_numeric($nota) ? number_format((float)$nota, 2) : ($nota ?: '--');
+            }
+            $row[] = $estado;
+            $row[] = $est['observaciones'] ?? '';
+
             foreach ($row as $ci => $val) {
                 $col = Coordinate::stringFromColumnIndex($ci + 1);
                 $ws->setCellValue("{$col}{$fila}", $val);
-                $this->estilo($ws, "{$col}{$fila}", [
-                    'alignment' => $ci === 2 ? 'left' : 'center',
-                    'border'    => true,
-                ]);
+                $ws->getStyle("{$col}{$fila}")->applyFromArray(array_merge($styleEst, [
+                    'font'      => ['bold' => ($ci >= 3 && $ci < 3 + $totalMaterias), 'size' => 8],
+                    'alignment' => ['horizontal' => ($ci === 1) ? Alignment::HORIZONTAL_LEFT : Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                ]));
             }
-            $ws->getRowDimension($fila)->setRowHeight(15);
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // HOJA POR CARRERA
-    // ─────────────────────────────────────────────────────────────────────────
-    private function crearHojaCarrera(array $carrera): void
-    {
-        $titulo = mb_substr($carrera['codigo'] ?: $carrera['nombre'], 0, 28);
-        $ws = $this->spreadsheet->createSheet();
-        $ws->setTitle($titulo);
-        // $ws->getSheetView()->setShowGridLines(false);
-        $ws->setShowGridlines(false);
-
-        foreach (['A' => 5, 'B' => 14, 'C' => 40, 'D' => 18,
-                  'E' => 16, 'F' => 16, 'G' => 16, 'H' => 16,
-                  'I' => 22, 'J' => 16] as $col => $w) {
-            $ws->getColumnDimension($col)->setWidth($w);
-        }
-
-        // Encabezado carrera
-        $ws->mergeCells('A1:J1');
-        $this->estilo($ws, 'A1:J1', ['font' => ['bold' => true, 'color' => self::BLANCO, 'size' => 13],
-                                      'fill' => self::AZUL_OSCURO, 'alignment' => 'center']);
-        $ws->setCellValue('A1', 'CENTRALIZADOR DE CALIFICACIONES');
-        $ws->getRowDimension(1)->setRowHeight(26);
-
-        $regimen = strtoupper($carrera['regimen']);
-        $ws->mergeCells('A2:J2');
-        $this->estilo($ws, 'A2:J2', ['font' => ['bold' => true, 'color' => self::BLANCO, 'size' => 10],
-                                      'fill' => self::AZUL_MEDIO, 'alignment' => 'center']);
-        $ws->setCellValue('A2', "{$carrera['nombre']}  —  Régimen: {$regimen}  |  Duración: {$carrera['duracion']} año(s)");
-        $ws->getRowDimension(2)->setRowHeight(18);
-
-        $fila = 4;
-
-        foreach ($carrera['grupos'] as $gmd) {
-            // Sub-encabezado grupo
-            $ws->mergeCells("A{$fila}:J{$fila}");
-            $this->estilo($ws, "A{$fila}:J{$fila}", ['font' => ['bold' => true, 'size' => 9],
-                                                       'fill' => self::AZUL_CLARO, 'alignment' => 'left']);
-            $ws->setCellValue("A{$fila}",
-                "GRUPO: {$gmd['grupo']}   |   MATERIA: {$gmd['materia']}   " .
-                "|   DOCENTE: {$gmd['docente']}   |   HORARIO: {$gmd['horario']}");
-            $ws->getRowDimension($fila)->setRowHeight(16);
+            $ws->getRowDimension($fila)->setRowHeight(14);
             $fila++;
-
-            // Cabeceras columnas
-            $cols = ['N°', 'CARNET', 'APELLIDOS Y NOMBRES', 'GRUPO',
-                     'NOTA ASIST.', 'NOTA ACAD.', 'NOTA FINAL',
-                     '2DA INST.', 'OBSERVACIONES', 'ESTADO'];
-            foreach ($cols as $ci => $h) {
-                $col = Coordinate::stringFromColumnIndex($ci + 1);
-                $ws->setCellValue("{$col}{$fila}", $h);
-                $this->estilo($ws, "{$col}{$fila}", [
-                    'font'      => ['bold' => true],
-                    'fill'      => self::GRIS_HEADER,
-                    'alignment' => 'center',
-                    'border'    => true,
-                    'wrap'      => true,
-                ]);
-            }
-            $ws->getRowDimension($fila)->setRowHeight(28);
-            $fila++;
-
-            $primeraFila = $fila;
-            $n = 1;
-
-            foreach ($gmd['estudiantes'] as $est) {
-                $est = (array) $est;
-                
-                $estado = strtoupper($est['estado'] ?? '');
-                $bgFila = str_contains($estado, 'APRO') ? self::VERDE_APRO
-                        : (str_contains($estado, 'REPR') ? self::ROJO_REPR
-                        : self::AMARILLO_2DA);
-
-                $datos = [
-                    $n++,
-                    $est['carnet'] ?? '',
-                    $est['nombreEstudiante'] ?? '',
-                    $gmd['grupo'],
-                    $est['nota_asistencia'] ?? '',
-                    $est['nota_academica'] ?? '',
-                    $est['nota_final'] ?? '',
-                    $est['segunda_instancia_nota'] ?? '',
-                    $est['observaciones'] ?? '',
-                    $estado,
-                ];
-
-                foreach ($datos as $ci => $val) {
-                    $col = Coordinate::stringFromColumnIndex($ci + 1);
-                    $ws->setCellValue("{$col}{$fila}", $val);
-                    $isNota = in_array($ci, [4, 5, 6, 7]);
-                    $this->estilo($ws, "{$col}{$fila}", [
-                        'fill'      => $bgFila,
-                        'alignment' => ($ci === 2 || $ci === 8) ? 'left' : 'center',
-                        'border'    => true,
-                        'font'      => $ci === 9 ? ['bold' => true] : [],
-                    ]);
-                    if ($isNota && is_numeric($val)) {
-                        $ws->getStyle("{$col}{$fila}")->getNumberFormat()
-                           ->setFormatCode('0.00');
-                    }
-                }
-                $ws->getRowDimension($fila)->setRowHeight(15);
-                $fila++;
-            }
-
-            $ultimaFila = $fila - 1;
-
-            // Fila de promedios
-            $ws->setCellValue("A{$fila}", '');
-            $ws->setCellValue("B{$fila}", '');
-            $ws->mergeCells("C{$fila}:D{$fila}");
-            $ws->setCellValue("C{$fila}", 'PROMEDIO GRUPO');
-            $ws->setCellValue("E{$fila}", "=AVERAGE(E{$primeraFila}:E{$ultimaFila})");
-            $ws->setCellValue("F{$fila}", "=AVERAGE(F{$primeraFila}:F{$ultimaFila})");
-            $ws->setCellValue("G{$fila}", "=AVERAGE(G{$primeraFila}:G{$ultimaFila})");
-            $ws->setCellValue("J{$fila}",
-                "=COUNTIF(J{$primeraFila}:J{$ultimaFila},\"APROBADO\")" .
-                "&\" APR / \"" .
-                "&COUNTIF(J{$primeraFila}:J{$ultimaFila},\"REPROBADO\")" .
-                "&\" REP\"");
-
-            foreach (['A', 'B', 'C', 'E', 'F', 'G', 'H', 'I', 'J'] as $col) {
-                $this->estilo($ws, "{$col}{$fila}", [
-                    'font'      => ['bold' => true],
-                    'fill'      => self::GRIS_HEADER,
-                    'alignment' => 'center',
-                    'border'    => true,
-                ]);
-            }
-            foreach (['E', 'F', 'G'] as $col) {
-                $ws->getStyle("{$col}{$fila}")->getNumberFormat()->setFormatCode('0.00');
-            }
-            $ws->getRowDimension($fila)->setRowHeight(16);
-            $fila += 3; // espacio entre grupos
         }
+
+        // ══════════════════════════════════════════════════════════════
+        //  PÁGINA
+        // ══════════════════════════════════════════════════════════════
+        $ws->getPageSetup()
+           ->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE)
+           ->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4)
+           ->setFitToPage(true)
+           ->setFitToWidth(1)
+           ->setFitToHeight(0);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // HOJA LEYENDA
-    // ─────────────────────────────────────────────────────────────────────────
-    private function crearHojaLeyenda(): void
-    {
-        $ws = $this->spreadsheet->createSheet();
-        $ws->setTitle('LEYENDA');
-        $ws->setShowGridlines(false);  
-        // $ws->getSheetView()->setShowGridLines(false);
-        $ws->getColumnDimension('B')->setWidth(25);
-        $ws->getColumnDimension('C')->setWidth(42);
-
-        $ws->mergeCells('B2:C2');
-        $this->estilo($ws, 'B2:C2', ['font' => ['bold' => true, 'color' => self::BLANCO, 'size' => 12],
-                                      'fill' => self::AZUL_OSCURO, 'alignment' => 'center']);
-        $ws->setCellValue('B2', 'LEYENDA DE COLORES');
-
-        $items = [
-            [self::VERDE_APRO,   'APROBADO',       'Nota final ≥ 51'],
-            [self::ROJO_REPR,    'REPROBADO',       'Nota final < 51'],
-            [self::AMARILLO_2DA, '2DA INSTANCIA',   'Habilitado a segunda instancia'],
-        ];
-
-        foreach ($items as $i => [$bg, $label, $desc]) {
-            $fila = 4 + $i;
-            $ws->setCellValue("B{$fila}", $label);
-            $ws->setCellValue("C{$fila}", $desc);
-            foreach (['B', 'C'] as $col) {
-                $this->estilo($ws, "{$col}{$fila}", [
-                    'fill'      => $bg,
-                    'font'      => $col === 'B' ? ['bold' => true] : [],
-                    'alignment' => $col === 'C' ? 'left' : 'center',
-                    'border'    => true,
-                ]);
-            }
-            $ws->getRowDimension($fila)->setRowHeight(16);
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Helper de estilos
-    // ─────────────────────────────────────────────────────────────────────────
-    private function estilo($ws, string $rango, array $opts): void
-    {
-        $style = $ws->getStyle($rango);
-
-        if (!empty($opts['fill'])) {
-            $style->getFill()
-                  ->setFillType(Fill::FILL_SOLID)
-                  ->getStartColor()->setARGB($opts['fill']);
-        }
-
-        $fontOpts = $opts['font'] ?? [];
-        $f = $style->getFont();
-        $f->setName('Arial')->setSize($fontOpts['size'] ?? 9);
-        if (!empty($fontOpts['bold']))  $f->setBold(true);
-        if (!empty($fontOpts['color'])) $f->getColor()->setARGB($fontOpts['color']);
-
-        $align = $opts['alignment'] ?? 'center';
-        $style->getAlignment()
-              ->setHorizontal($align)
-              ->setVertical(Alignment::VERTICAL_CENTER)
-              ->setWrapText($opts['wrap'] ?? false);
-
-        if (!empty($opts['border'])) {
-            $borderStyle = [
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color'       => ['argb' => 'FF888888'],
-                    ],
-                ],
-            ];
-            $ws->getStyle($rango)->applyFromArray($borderStyle);
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Guardar en stream (para response()->streamDownload)
-    // ─────────────────────────────────────────────────────────────────────────
     public function stream(string $filename = 'centralizador.xlsx'): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $spreadsheet = $this->build();
-
         return response()->streamDownload(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);
             $writer->save('php://output');
         }, $filename, [
-            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Cache-Control'       => 'max-age=0',
+            'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
         ]);
     }
 }
