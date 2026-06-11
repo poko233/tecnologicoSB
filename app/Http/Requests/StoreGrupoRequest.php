@@ -15,7 +15,7 @@ class StoreGrupoRequest extends FormRequest
     {
         return [
             'nombre'   => 'required|string|max:50',
-            'codigo'   => 'required|string|max:50|unique:Grupo,codigo',
+            'codigo'   => 'required|string|max:50',
             'paralelo' => 'nullable|string|max:50',
             'turno'    => 'required|in:Mañana,Tarde,Noche',
             'gestion'  => 'required|string|max:20',

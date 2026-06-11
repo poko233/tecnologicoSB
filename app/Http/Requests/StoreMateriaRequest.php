@@ -14,7 +14,7 @@ class StoreMateriaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombreMateria'  => 'required|string|max:50',
+            'nombreMateria'  => 'required|string|max:255',
             'codigo'         => 'required|string|max:50|unique:Materia,codigo',
             'semestre'       => 'required|integer|min:1|max:12',
             'estado'         => 'nullable|in:activo,inactivo',
