@@ -8,12 +8,50 @@ use App\Models\DocumentoEstudiante;
 use App\Models\Inscripcion;
 use App\Models\Cuota;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ResumenInscripcionController extends Controller
 {
     public function show($idUsuario)
     {
+        return response()->json($this->obtenerResumen($idUsuario, true));
+    }
+
+    public function formularioRegistroPdf($idUsuario)
+    {
+        $resumen = $this->obtenerResumen($idUsuario, false);
+
+        $nombreArchivo = 'formulario_registro_' .
+            ($resumen['usuario']['matricula'] ?? $idUsuario) .
+            '.pdf';
+
+        $pdf = Pdf::loadView('reportes.inscripcion.formulario_registro', [
+            'resumen' => $resumen,
+            'fechaGeneracion' => now()->format('d/m/Y H:i'),
+        ])->setPaper('letter', 'portrait');
+
+        return $pdf->stream($nombreArchivo);
+    }
+
+    public function finalizar($idUsuario)
+    {
         $usuario = User::where('id', $idUsuario)->firstOrFail();
+
+        return response()->json([
+            'message' => 'Inscripción finalizada correctamente',
+            'idUsuario' => $usuario->id,
+        ]);
+    }
+
+    private function obtenerResumen($idUsuario, bool $incluirDocumentos = true): array
+    {
+        $usuario = User::where('id', $idUsuario)->firstOrFail();
+
+        $matricula = DB::table('Estudiante')
+            ->where('id_usuario', $idUsuario)
+            ->value('matricula');
+
+        $referencias = $usuario->numeroReferencias()->get();
 
         $carreraUsuario = CarreraUsuario::with('carrera')
             ->where('idUsuario', $idUsuario)
@@ -36,7 +74,7 @@ class ResumenInscripcionController extends Controller
                 ->get();
         }
 
-        $matricula = $cuotas
+        $cuotaMatricula = $cuotas
             ->where('tipo', 'MATRICULA')
             ->first();
 
@@ -44,7 +82,7 @@ class ResumenInscripcionController extends Controller
             ->where('tipo', 'MENSUAL')
             ->values();
 
-        $totalMatricula = $matricula ? (float) $matricula->monto : 0;
+        $totalMatricula = $cuotaMatricula ? (float) $cuotaMatricula->monto : 0;
 
         $totalCuotas = $cuotasMensuales
             ->where('estadoCuota', '!=', 'Condonado')
@@ -85,10 +123,10 @@ class ResumenInscripcionController extends Controller
                     'm.codigo as codigoMateria',
                     'm.semestre'
                 )
-                ->orderBy('gmd.idMateria')
-                ->orderBy('gmd.idGrupo')
+                ->orderBy('m.semestre')
+                ->orderBy('m.nombreMateria')
+                ->orderBy('g.idGrupo')
                 ->get()
-                ->unique('idGrupo')
                 ->values();
         }
 
@@ -125,8 +163,6 @@ class ResumenInscripcionController extends Controller
         }
 
         $grupos = $gruposBase->map(function ($grupo) use ($horarios) {
-            $grupo->horario = null;
-
             $grupo->horarios = $horarios
                 ->get($grupo->idGrupo, collect())
                 ->map(function ($horario) {
@@ -142,19 +178,28 @@ class ResumenInscripcionController extends Controller
             return $grupo;
         });
 
-        $documentos = DocumentoEstudiante::where('idUsuario', $idUsuario)->get();
+        $documentos = $incluirDocumentos
+            ? DocumentoEstudiante::where('idUsuario', $idUsuario)->get()
+            : collect();
 
-        return response()->json([
+        return [
             'usuario' => [
                 'id' => $usuario->id,
+                'matricula' => $matricula,
                 'nombres' => $usuario->nombres,
                 'apellidoPaterno' => $usuario->apellidoPaterno,
                 'apellidoMaterno' => $usuario->apellidoMaterno,
                 'ci' => $usuario->ci,
+                'expedido' => $usuario->expedido,
+                'genero' => $usuario->genero,
+                'fecha_nac' => $usuario->fecha_nac,
                 'email' => $usuario->email,
                 'celular' => $usuario->celular,
                 'direccion' => $usuario->direccion,
+                'created_at' => $usuario->created_at,
             ],
+
+            'referencias' => $referencias,
 
             'carrera' => $carreraUsuario?->carrera,
 
@@ -163,7 +208,7 @@ class ResumenInscripcionController extends Controller
             'cuotas' => $cuotas,
 
             'planPago' => [
-                'matricula' => $matricula,
+                'matricula' => $cuotaMatricula,
                 'cuotasMensuales' => $cuotasMensuales,
                 'totalMatricula' => $totalMatricula,
                 'totalCuotas' => $totalCuotas,
@@ -178,18 +223,10 @@ class ResumenInscripcionController extends Controller
                 'datosPersonales' => true,
                 'datosAcademicos' => (bool) $carreraUsuario,
                 'cuotasGeneradas' => $cuotas->count() > 0,
-                'documentosCargados' => $documentos->count() > 0,
+                'documentosCargados' => $incluirDocumentos
+                    ? $documentos->count() > 0
+                    : false,
             ],
-        ]);
-    }
-
-    public function finalizar($idUsuario)
-    {
-        $usuario = User::where('id', $idUsuario)->firstOrFail();
-
-        return response()->json([
-            'message' => 'Inscripción finalizada correctamente',
-            'idUsuario' => $usuario->id,
-        ]);
+        ];
     }
 }

@@ -52,6 +52,11 @@ Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']
 Route::post('/qr/verify-access', [QrController::class, 'verifyAccess']);
 Route::post('/qr/verify-access-ci', [QrController::class, 'verifyAccessByCi']);
 
+Route::get('/inscripcion/formulario-registro/{idUsuario}/pdf', [
+    ResumenInscripcionController::class,
+    'formularioRegistroPdf'
+    ]);
+
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('mis-modulos', MisModulosController::class);
@@ -124,7 +129,12 @@ Route::middleware('auth:sanctum')->group(function () {
         EstudianteController::class,
         'documentosInscripcion'
     ]);
+    Route::get('/estudiantes/siguiente-matricula', [
+    EstudianteController::class,
+    'siguienteMatricula'
+]);
 
+Route::apiResource('estudiantes', EstudianteController::class);
     Route::apiResource('estudiantes', EstudianteController::class);
 
     Route::get('/areas', [AreaController::class, 'index']);
@@ -162,6 +172,8 @@ Route::middleware('auth:sanctum')->group(function () {
         ResumenInscripcionController::class,
         'show'
     ]);
+
+    
 
     Route::post('/inscripcion/finalizar/{idUsuario}', [
         ResumenInscripcionController::class,

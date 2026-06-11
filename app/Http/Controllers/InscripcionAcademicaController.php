@@ -114,42 +114,62 @@ class InscripcionAcademicaController extends Controller
             'idGrupo' => 'required|exists:Grupo,idGrupo',
         ]);
 
-        return DB::transaction(function () use ($validated) {
-            $grupo = Grupo::where('idGrupo', $validated['idGrupo'])
-                ->where('estado', 'activo')
-                ->first();
+        try {
+            return DB::transaction(function () use ($validated) {
+                $grupo = Grupo::where('idGrupo', $validated['idGrupo'])
+                    ->where('estado', 'activo')
+                    ->lockForUpdate()
+                    ->first();
 
-            if (!$grupo) {
+                if (!$grupo) {
+                    return response()->json([
+                        'message' => 'El grupo seleccionado está inactivo o no existe.',
+                    ], 422);
+                }
+
+                $existeGrupo = Inscripcion::where('idUsuario', $validated['idUsuario'])
+                    ->where('idGrupo', $validated['idGrupo'])
+                    ->exists();
+
+                if ($existeGrupo) {
+                    return response()->json([
+                        'message' => 'El estudiante ya está inscrito en este grupo.',
+                    ], 422);
+                }
+
+                if ((int) $grupo->cupos <= 0) {
+                    return response()->json([
+                        'message' => 'No hay cupos disponibles para este grupo.',
+                    ], 422);
+                }
+
+                $this->registrarCarreraUsuario(
+                    (int) $validated['idUsuario'],
+                    (int) $validated['idCarrera']
+                );
+
+                $inscripcion = Inscripcion::create([
+                    'idUsuario' => $validated['idUsuario'],
+                    'idGrupo' => $validated['idGrupo'],
+                ]);
+
+                $grupo->decrement('cupos');
+
+                $grupoActualizado = Grupo::where('idGrupo', $validated['idGrupo'])->first();
+
                 return response()->json([
-                    'message' => 'El grupo seleccionado está inactivo o no existe.',
-                ], 422);
-            }
-
-            $existeGrupo = Inscripcion::where('idUsuario', $validated['idUsuario'])
-                ->where('idGrupo', $validated['idGrupo'])
-                ->exists();
-
-            if ($existeGrupo) {
-                return response()->json([
-                    'message' => 'El estudiante ya está inscrito en este grupo',
-                ], 422);
-            }
-
-            $this->registrarCarreraUsuario(
-                $validated['idUsuario'],
-                $validated['idCarrera']
-            );
-
-            $inscripcion = Inscripcion::create([
-                'idUsuario' => $validated['idUsuario'],
-                'idGrupo' => $validated['idGrupo'],
-            ]);
-
+                    'message' => 'Estudiante inscrito correctamente al grupo.',
+                    'inscripcion' => $inscripcion,
+                    'grupo' => $grupoActualizado,
+                    'cupos_restantes' => $grupoActualizado?->cupos,
+                ], 201);
+            });
+        } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Estudiante inscrito correctamente al grupo',
-                'inscripcion' => $inscripcion,
-            ], 201);
-        });
+                'message' => 'No se pudo inscribir al estudiante.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function guardarPagoCuotas(Request $request)
@@ -177,8 +197,8 @@ class InscripcionAcademicaController extends Controller
             \Log::info('VALIDACION OK CUOTAS');
 
             $this->registrarCarreraUsuario(
-                $validated['idUsuario'],
-                $validated['idCarrera']
+                (int) $validated['idUsuario'],
+                (int) $validated['idCarrera']
             );
 
             \Log::info('CARRERA USUARIO OK');
@@ -191,7 +211,6 @@ class InscripcionAcademicaController extends Controller
             \Log::info('CUOTAS ANTERIORES BORRADAS');
 
             $now = now();
-
             $filas = [];
 
             $filas[] = [

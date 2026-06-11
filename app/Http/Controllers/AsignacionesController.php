@@ -9,15 +9,38 @@ use Illuminate\Validation\Rule;
 
 class AsignacionesController extends Controller
 {
-   public function estudiantes()
+public function estudiantes()
 {
-    $estudiantes = User::query()
-        ->join('user_rol as ur', 'ur.id_user', '=', 'user.id')
-        ->where('ur.id_rol', 2) // 2 = Estudiante
-        ->select('user.*')
-        ->orderBy('user.apellidoPaterno')
-        ->orderBy('user.apellidoMaterno')
-        ->orderBy('user.nombres')
+    $estudiantes = DB::table('user as u')
+        ->join('user_rol as ur', 'ur.id_user', '=', 'u.id')
+        ->leftJoin('Estudiante as est', 'est.id_usuario', '=', 'u.id')
+        ->where('ur.id_rol', 2)
+        ->select(
+            'u.id',
+            'u.usuario',
+            'u.ci',
+            'u.nombres',
+            'u.apellidoPaterno',
+            'u.apellidoMaterno',
+            'u.genero',
+            'u.fecha_nac',
+            'u.email',
+            'u.telefono',
+            'u.celular',
+            'u.direccion',
+            'u.expedido',
+            'u.codigo_qr',
+            'u.verificacion',
+            'u.foto',
+            'u.estado',
+            'u.created_at',
+            'u.updated_at',
+            'est.matricula as matricula',
+            DB::raw("DATE_FORMAT(u.created_at, '%d/%m/%Y') as fechaInscripcion")
+        )
+        ->orderBy('u.apellidoPaterno')
+        ->orderBy('u.apellidoMaterno')
+        ->orderBy('u.nombres')
         ->get();
 
     return response()->json([
@@ -53,7 +76,7 @@ class AsignacionesController extends Controller
 
         $documentosPendientes = collect($documentosRequeridos)
             ->filter(function ($doc) use ($documentosPresentados) {
-                return !in_array(mb_strtolower($doc), $documentosPresentados);
+                return !in_array(mb_strtolower($doc), $documentosPresentados, true);
             })
             ->values();
 
@@ -116,7 +139,8 @@ class AsignacionesController extends Controller
             ->join('Grupo as g', 'g.idGrupo', '=', 'gmd.idGrupo')
             ->where('m.semestre', 1)
             ->where('m.estado', 'activo')
-            ->where('g.estado', 'activo');
+            ->where('g.estado', 'activo')
+            ->where('g.cupos', '>', 0);
 
         if ($idCarrera) {
             $query->where('c.idCarrera', $idCarrera);
@@ -236,6 +260,8 @@ class AsignacionesController extends Controller
 
             $inscritas = [];
             $omitidas = [];
+            $sinCupos = [];
+            $cuposDescontados = 0;
 
             foreach ($materiasConGrupo as $item) {
                 $yaInscritoEnMateria = DB::table('Inscripcion as i')
@@ -249,6 +275,22 @@ class AsignacionesController extends Controller
                     continue;
                 }
 
+                $grupo = DB::table('Grupo')
+                    ->where('idGrupo', $item->idGrupo)
+                    ->where('estado', 'activo')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$grupo) {
+                    $omitidas[] = $item->nombreMateria . ' (grupo inactivo)';
+                    continue;
+                }
+
+                if ((int) $grupo->cupos <= 0) {
+                    $sinCupos[] = $item->nombreMateria;
+                    continue;
+                }
+
                 DB::table('Inscripcion')->insert([
                     'idUsuario' => $estudiante->id,
                     'idGrupo' => $item->idGrupo,
@@ -256,13 +298,30 @@ class AsignacionesController extends Controller
                     'updated_at' => now(),
                 ]);
 
+                DB::table('Grupo')
+                    ->where('idGrupo', $item->idGrupo)
+                    ->decrement('cupos');
+
+                $cuposDescontados++;
                 $inscritas[] = $item->nombreMateria;
+            }
+
+            if (count($inscritas) === 0 && count($sinCupos) > 0) {
+                return response()->json([
+                    'message' => 'No se pudo inscribir. No hay cupos disponibles.',
+                    'inscritas' => $inscritas,
+                    'omitidas' => $omitidas,
+                    'sinCupos' => $sinCupos,
+                    'cuposDescontados' => $cuposDescontados,
+                ], 422);
             }
 
             return response()->json([
                 'message' => 'Inscripción automática realizada.',
                 'inscritas' => $inscritas,
                 'omitidas' => $omitidas,
+                'sinCupos' => $sinCupos,
+                'cuposDescontados' => $cuposDescontados,
             ]);
         });
     }

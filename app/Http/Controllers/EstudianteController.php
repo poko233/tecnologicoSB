@@ -30,12 +30,25 @@ class EstudianteController extends Controller
             })
             ->whereDoesntHave('cuotas')
             ->whereDoesntHave('carreras')
-            ->latest('id')
+            ->leftJoin('Estudiante as e', 'e.id_usuario', '=', 'user.id')
+            ->select('user.*', 'e.matricula')
+            ->latest('user.id')
             ->get();
 
         return response()->json([
             'estudiantes' => $estudiantes
         ]);
+    }
+
+    public function siguienteMatricula()
+    {
+        return DB::transaction(function () {
+            return response()->json([
+                'matricula' => $this->generarMatricula(),
+                'fechaInscripcion' => now()->format('Y-m-d'),
+                'fechaInscripcionTexto' => now()->format('d/m/Y'),
+            ]);
+        });
     }
 
     public function documentosInscripcion(string $id)
@@ -117,6 +130,8 @@ class EstudianteController extends Controller
         DB::beginTransaction();
 
         try {
+            $matricula = $this->generarMatricula();
+
             $estudiante = User::create([
                 'usuario' => $validated['carnet'],
                 'password' => Hash::make($validated['carnet']),
@@ -134,6 +149,13 @@ class EstudianteController extends Controller
                 'verificacion' => 0,
             ]);
 
+            DB::table('Estudiante')->insert([
+                'id_usuario' => $estudiante->id,
+                'matricula' => $matricula,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
             $estudiante->roles()->syncWithoutDetaching([2]);
 
             $estudiante->numeroReferencias()->create([
@@ -144,8 +166,13 @@ class EstudianteController extends Controller
 
             DB::commit();
 
+            $estudiante->matricula = $matricula;
+
             return response()->json([
                 'message' => 'Estudiante registrado correctamente',
+                'matricula' => $matricula,
+                'fechaInscripcion' => now()->format('Y-m-d'),
+                'fechaInscripcionTexto' => now()->format('d/m/Y'),
                 'estudiante' => $estudiante->load(['numeroReferencias', 'roles'])
             ], 201);
         } catch (\Throwable $e) {
@@ -166,7 +193,10 @@ class EstudianteController extends Controller
             ->whereHas('roles', function ($query) {
                 $query->where('rol.id', 2);
             })
-            ->findOrFail($id);
+            ->leftJoin('Estudiante as e', 'e.id_usuario', '=', 'user.id')
+            ->select('user.*', 'e.matricula')
+            ->where('user.id', $id)
+            ->firstOrFail();
 
         return response()->json([
             'estudiante' => $estudiante
@@ -227,6 +257,14 @@ class EstudianteController extends Controller
                 'celular' => $validated['celular'],
             ]);
 
+            DB::table('Estudiante')->updateOrInsert(
+                ['id_usuario' => $estudiante->id],
+                [
+                    'updated_at' => now(),
+                    'created_at' => DB::raw('COALESCE(created_at, NOW())'),
+                ]
+            );
+
             $estudiante->roles()->syncWithoutDetaching([2]);
 
             $estudiante->numeroReferencias()->updateOrCreate(
@@ -239,6 +277,12 @@ class EstudianteController extends Controller
             );
 
             DB::commit();
+
+            $matricula = DB::table('Estudiante')
+                ->where('id_usuario', $estudiante->id)
+                ->value('matricula');
+
+            $estudiante->matricula = $matricula;
 
             return response()->json([
                 'message' => 'Estudiante actualizado correctamente',
@@ -263,6 +307,10 @@ class EstudianteController extends Controller
         DB::beginTransaction();
 
         try {
+            DB::table('Estudiante')
+                ->where('id_usuario', $estudiante->id)
+                ->delete();
+
             $estudiante->numeroReferencias()->delete();
             $estudiante->roles()->detach();
             $estudiante->delete();
@@ -282,5 +330,21 @@ class EstudianteController extends Controller
                 'line' => $e->getLine(),
             ], 500);
         }
+    }
+
+    private function generarMatricula(): string
+    {
+        $ultimo = DB::table('Estudiante')
+            ->whereNotNull('matricula')
+            ->whereRaw("matricula REGEXP '^[0-9]+$'")
+            ->orderByRaw('CAST(matricula AS UNSIGNED) DESC')
+            ->lockForUpdate()
+            ->value('matricula');
+
+        if (!$ultimo || (int) $ultimo < 10001) {
+            return '10001';
+        }
+
+        return (string) ((int) $ultimo + 1);
     }
 }
