@@ -5,56 +5,133 @@
 <style>
   * { font-family: Arial, sans-serif; font-size: 9px; box-sizing: border-box; }
   body { margin: 0; padding: 10px; }
- 
-  .titulo {
-    background: #1F3864; color: #fff; text-align: center;
-    font-size: 14px; font-weight: bold; padding: 8px; margin-bottom: 6px;
+
+  /* ── ENCABEZADO CON LOGO ── */
+  .header-table {
+    width: 100%;
+    border: 1.5px solid #000;
+    margin-bottom: 6px;
+    border-collapse: collapse;
   }
-  .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-  .meta-table td { background: #D9E1F2; padding: 4px 6px; }
-  .meta-table .label { font-weight: bold; color: #1F3864; width: 70px; }
- 
-  table.notas { width: 100%; border-collapse: collapse; }
+  .header-table td {
+    vertical-align: middle;
+    padding: 6px;
+  }
+  .logo-cell {
+    width: 80px;
+    text-align: center;
+    border-right: 1.5px solid #000;
+  }
+  .logo-cell img {
+    height: 50px;
+  }
+  .titulo-cell {
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    background: #f5f5f5;
+  }
+
+  /* ── META ── */
+  .meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+    border: 1px solid #000;
+  }
+  .meta-table td {
+    padding: 4px 6px;
+    border: 1px solid #000;
+    background: #fafafa;
+  }
+  .meta-table .label {
+    font-weight: bold;
+    width: 60px;
+    background: #eee;
+  }
+
+  /* ── TABLA NOTAS ── */
+  table.notas {
+    width: 100%;
+    border-collapse: collapse;
+  }
   table.notas th {
-    background: #1F3864; color: #fff;
-    padding: 5px 3px; text-align: center; border: 1px solid #aaa;
+    background: #ddd;
+    padding: 5px 3px;
+    text-align: center;
+    border: 1px solid #000;
     font-size: 8px;
+    font-weight: bold;
   }
-  table.notas th.ec-col { background: #2E75B6; }
-  table.notas td { border: 1px solid #ccc; padding: 4px 3px; text-align: center; }
-  table.notas td.nombre { text-align: left; }
- 
-  .aprobado  { background: #E2EFDA; }
-  .reprobado { background: #FCE4D6; }
-  .nota-final { background: #FFF2CC; }
- 
+  table.notas td {
+    border: 1px solid #000;
+    padding: 4px 3px;
+    text-align: center;
+  }
+  table.notas td.nombre {
+    text-align: left;
+  }
+  .nota-final {
+    font-weight: bold;
+  }
+
+  /* ── RESUMEN ── */
   .resumen {
-    background: #D9E1F2; margin-top: 8px;
-    padding: 5px 8px; font-weight: bold;
+    border: 1px solid #000;
+    margin-top: 8px;
+    padding: 5px 8px;
+    font-weight: bold;
+    background: #f5f5f5;
   }
 </style>
 </head>
 <body>
- 
-<div class="titulo">PLANILLA DE CALIFICACIONES</div>
- 
-<table class="meta-table">
+
+{{-- ═══ LOGO + TÍTULO ═══ --}}
+<table class="header-table">
   <tr>
-    <td class="label">Grupo:</td>   <td>{{ $grupo['nombre'] }}</td>
-    <td class="label">Gestión:</td> <td>{{ $grupo['gestion'] }}</td>
-    <td class="label">Materia:</td> <td>{{ $materia['nombre'] }}</td>
-    <td class="label">Carrera:</td> <td>{{ $carrera }}</td>
+    <td class="logo-cell">
+      @php 
+        $logoPath = public_path('empresa/logo_largo.png'); 
+        $logoBase64 = '';
+        if(file_exists($logoPath)) {
+          $logoBase64 = base64_encode(file_get_contents($logoPath));
+        }
+      @endphp
+      @if($logoBase64)
+        <img src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo">
+      @endif
+
+    </td>
+    <td class="titulo-cell">
+      PLANILLA DE CALIFICACIONES
+    </td>
   </tr>
 </table>
- 
+
+{{-- ═══ DATOS ═══ --}}
+<table class="meta-table">
+  <tr>
+    <td class="label">Grupo:</td>
+    <td>{{ $grupo['nombre'] }}</td>
+    <td class="label">Gestión:</td>
+    <td>{{ $grupo['gestion'] }}</td>
+    <td class="label">Materia:</td>
+    <td>{{ $materia['nombre'] }}</td>
+    <td class="label">Carrera:</td>
+    <td>{{ $carrera }}</td>
+  </tr>
+</table>
+
+{{-- ═══ TABLA DE NOTAS ═══ --}}
 <table class="notas">
   <thead>
     <tr>
       <th style="width:22px">#</th>
-      <th style="width:200px">Apellidos y Nombres</th>
+      <th style="width:180px">Apellidos y Nombres</th>
       <th>Asist.</th>
       @foreach($elementos_competencia as $ec)
-        <th class="ec-col">{{ $ec['nombre'] }}</th>
+        <th>{{ $ec['nombre'] }}</th>
       @endforeach
       <th>N. Acad.</th>
       <th>N. Final</th>
@@ -64,10 +141,9 @@
   <tbody>
     @foreach($estudiantes as $i => $est)
       @php
-        $clase = ($est['estado'] ?? '') === 'Aprobado' ? 'aprobado' : 'reprobado';
         $notasMap = collect($est['notas_ec'])->pluck('puntaje', 'id_elemento_competencia')->toArray();
       @endphp
-      <tr class="{{ $clase }}">
+      <tr>
         <td>{{ $i + 1 }}</td>
         <td class="nombre">{{ $est['nombre_completo'] }}</td>
         <td>{{ number_format($est['nota_asistencia'], 2) }}</td>
@@ -76,12 +152,13 @@
         @endforeach
         <td>{{ number_format($est['nota_academica'], 2) }}</td>
         <td class="nota-final">{{ number_format($est['nota_final'], 2) }}</td>
-        <td>{{ $est['estado'] }}</td>
+        <td><strong>{{ $est['estado'] }}</strong></td>
       </tr>
     @endforeach
   </tbody>
 </table>
- 
+
+{{-- ═══ RESUMEN ═══ --}}
 <div class="resumen">
   Total estudiantes: {{ $total_estudiantes }}
   &nbsp;&nbsp;|&nbsp;&nbsp;
@@ -89,7 +166,6 @@
   &nbsp;&nbsp;|&nbsp;&nbsp;
   Reprobados: {{ $reprobados }}
 </div>
- 
+
 </body>
 </html>
-*/
