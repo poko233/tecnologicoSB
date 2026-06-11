@@ -40,19 +40,19 @@ use App\Http\Controllers\ReporteInscritosController;
 use App\Http\Controllers\ReporteListaGrupoController;
 
 Route::get('/reportes/lista-grupo/filtros', [ReporteListaGrupoController::class, 'filtros']);
-Route::get('/reportes/lista-grupo/xlsx',    [ReporteListaGrupoController::class, 'xlsx']);
-Route::get('/reportes/lista-grupo/pdf',     [ReporteListaGrupoController::class, 'pdf']);
+Route::get('/reportes/lista-grupo/xlsx', [ReporteListaGrupoController::class, 'xlsx']);
+Route::get('/reportes/lista-grupo/pdf', [ReporteListaGrupoController::class, 'pdf']);
 
 Route::get('/reportes/inscritos-carrera/filtros', [ReporteInscritosController::class, 'filtros']);
-Route::get('/reportes/inscritos-carrera/xlsx',    [ReporteInscritosController::class, 'xlsx']);
-Route::get('/reportes/inscritos-carrera/pdf',     [ReporteInscritosController::class, 'pdf']);
+Route::get('/reportes/inscritos-carrera/xlsx', [ReporteInscritosController::class, 'xlsx']);
+Route::get('/reportes/inscritos-carrera/pdf', [ReporteInscritosController::class, 'pdf']);
 
 Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
 Route::get('/reportes/calificaciones/preview', [ReporteCalificacionesController::class, 'preview']);
-    Route::get('/reportes/calificaciones/xlsx',    [ReporteCalificacionesController::class, 'xlsx']);
-    Route::get('/reportes/calificaciones/pdf',     [ReporteCalificacionesController::class, 'pdf']);
-    Route::get('/reportes/calificaciones/filtros', [ReporteCalificacionesController::class, 'filtros']);
-    
+Route::get('/reportes/calificaciones/xlsx', [ReporteCalificacionesController::class, 'xlsx']);
+Route::get('/reportes/calificaciones/pdf', [ReporteCalificacionesController::class, 'pdf']);
+Route::get('/reportes/calificaciones/filtros', [ReporteCalificacionesController::class, 'filtros']);
+
 Route::post('/qr/debug-generate', [QrController::class, 'debugGenerate']);
 Route::post('/qr/regenerate-all', [QrController::class, 'regenerateAll']);
 
@@ -69,13 +69,14 @@ Route::post('/qr/verify-access-ci', [QrController::class, 'verifyAccessByCi']);
 Route::get('/inscripcion/formulario-registro/{idUsuario}/pdf', [
     ResumenInscripcionController::class,
     'formularioRegistroPdf'
-    ]);
+]);
 
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('mis-modulos', MisModulosController::class);
 
     Route::get('/user', [AuthController::class, 'user']);
+    Route::put('/change-password', [AuthController::class, 'changePassword']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     /*
@@ -112,14 +113,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/planilla', [NotasController::class, 'planilla']);
         Route::post('/planilla/guardar', [NotasController::class, 'guardarNotas']);
     });
-    
-    
-    Route::get('/reportes/{idGrupoMateriaDocente}/excel',   [PlanillaReporteController::class, 'excel']);
-    Route::get('/reportes/{idGrupoMateriaDocente}/pdf',     [PlanillaReporteController::class, 'pdf']);
+
+
+    Route::get('/reportes/{idGrupoMateriaDocente}/excel', [PlanillaReporteController::class, 'excel']);
+    Route::get('/reportes/{idGrupoMateriaDocente}/pdf', [PlanillaReporteController::class, 'pdf']);
     Route::get('/reportes/{idGrupoMateriaDocente}/pdf/ver', [PlanillaReporteController::class, 'pdfVer']);
 
 
-   
+
     /*
     |--------------------------------------------------------------------------
     | Inscripción estudiante
@@ -141,11 +142,11 @@ Route::middleware('auth:sanctum')->group(function () {
         'documentosInscripcion'
     ]);
     Route::get('/estudiantes/siguiente-matricula', [
-    EstudianteController::class,
-    'siguienteMatricula'
-]);
+        EstudianteController::class,
+        'siguienteMatricula'
+    ]);
 
-Route::apiResource('estudiantes', EstudianteController::class);
+    Route::apiResource('estudiantes', EstudianteController::class);
     Route::apiResource('estudiantes', EstudianteController::class);
 
     Route::get('/areas', [AreaController::class, 'index']);
@@ -184,7 +185,7 @@ Route::apiResource('estudiantes', EstudianteController::class);
         'show'
     ]);
 
-    
+
 
     Route::post('/inscripcion/finalizar/{idUsuario}', [
         ResumenInscripcionController::class,

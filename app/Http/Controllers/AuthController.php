@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ChangePasswordRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -59,8 +60,8 @@ class AuthController extends Controller
         $userData['roles'] = $user->roles->pluck('rol')->toArray();
 
         return response()->json([
-            'token'   => $token,
-            'user'    => $userData,
+            'token' => $token,
+            'user' => $userData,
             'message' => 'Sesión iniciada correctamente',
         ]);
     }
@@ -69,18 +70,18 @@ class AuthController extends Controller
     {
         try {
             $validated = $request->validate([
-                'usuario'   => 'required|string|max:40|unique:user,usuario',
-                'password'  => 'required|string|min:6',
-                'ci'        => 'required|string|max:12|unique:user,ci',
-                'nombres'   => 'required|string|max:40',
+                'usuario' => 'required|string|max:40|unique:user,usuario',
+                'password' => 'required|string|min:6',
+                'ci' => 'required|string|max:12|unique:user,ci',
+                'nombres' => 'required|string|max:40',
                 'apellidos' => 'required|string|max:40',
-                'genero'    => 'required|in:MASCULINO,FEMENINO',
-                'fecha_nac' => 'required|date|before:today|after:'.now()->subYears(150)->format('Y-m-d'),
-                'email'     => 'nullable|email|max:80',
-                'telefono'  => 'nullable|string|max:10',
-                'celular'   => 'nullable|string|max:10',
-                'roles'     => 'required|array|min:1',
-                'roles.*'   => 'exists:rol,rol',   // <-- validar que exista el nombre de rol
+                'genero' => 'required|in:MASCULINO,FEMENINO',
+                'fecha_nac' => 'required|date|before:today|after:' . now()->subYears(150)->format('Y-m-d'),
+                'email' => 'nullable|email|max:80',
+                'telefono' => 'nullable|string|max:10',
+                'celular' => 'nullable|string|max:10',
+                'roles' => 'required|array|min:1',
+                'roles.*' => 'exists:rol,rol',   // <-- validar que exista el nombre de rol
             ], [
                 'roles.required' => 'Debe seleccionar al menos un rol.',
                 'roles.*.exists' => 'El rol seleccionado no es válido.',
@@ -89,7 +90,7 @@ class AuthController extends Controller
             $firstError = collect($e->errors())->flatten()->first();
             return response()->json([
                 'message' => $firstError ?? 'Algunos datos ya se encuentran registrados o son inválidos.',
-                'errors'  => $e->errors(),
+                'errors' => $e->errors(),
             ], 422);
         }
 
@@ -115,17 +116,17 @@ class AuthController extends Controller
 
         // Crear usuario
         $user = \App\Models\User::create([
-            'usuario'   => $validated['usuario'],
-            'password'  => $validated['password'],
-            'ci'        => $validated['ci'],
-            'nombres'   => $validated['nombres'],
+            'usuario' => $validated['usuario'],
+            'password' => $validated['password'],
+            'ci' => $validated['ci'],
+            'nombres' => $validated['nombres'],
             'apellidos' => $validated['apellidos'],
-            'genero'    => $validated['genero'],
+            'genero' => $validated['genero'],
             'fecha_nac' => $validated['fecha_nac'],
-            'email'     => isset($validated['email']) ? strtolower(trim($validated['email'])) : null,
-            'telefono'  => $validated['telefono'] ?? null,
-            'celular'   => $validated['celular'] ?? null,
-            'estado'    => 'ACTIVO',
+            'email' => isset($validated['email']) ? strtolower(trim($validated['email'])) : null,
+            'telefono' => $validated['telefono'] ?? null,
+            'celular' => $validated['celular'] ?? null,
+            'estado' => 'ACTIVO',
         ]);
 
         // Asignar roles
@@ -137,8 +138,8 @@ class AuthController extends Controller
         $token = $user->createToken('mobile')->plainTextToken;
 
         return response()->json([
-            'token'   => $token,
-            'user'    => $userData,
+            'token' => $token,
+            'user' => $userData,
             'message' => 'Usuario registrado exitosamente',
         ], 201);
     }
@@ -177,7 +178,7 @@ class AuthController extends Controller
                         'Director Administrativo',
                     ]);
                     break;
-                }
+            }
         }
 
         return array_unique($allowed);
@@ -198,5 +199,37 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Sesión cerrada exitosamente',
         ]);
+    }
+    /**
+     * PUT /api/change-password
+     *
+     * Cambia la contraseña del usuario autenticado.
+     */
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validated();
+
+        // Verificar que la contraseña actual sea correcta
+        if (!Hash::check($data['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'La contraseña actual no es correcta.',
+            ], 422);
+        }
+
+        // (Opcional pero recomendable) No permitir que la nueva contraseña sea igual a la anterior
+        if (Hash::check($data['new_password'], $user->password)) {
+            return response()->json([
+                'message' => 'La nueva contraseña no puede ser igual a la anterior.',
+            ], 422);
+        }
+
+        // Actualizar la contraseña
+        $user->password = Hash::make($data['new_password']);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Contraseña actualizada correctamente.',
+        ], 200);
     }
 }
