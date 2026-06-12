@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\ObservacionUsuario;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -12,13 +14,15 @@ class EstudianteController extends Controller
 {
     public function index()
     {
+        $estudiantes = User::with(['numeroReferencias', 'roles'])
+            ->whereHas('roles', function ($query) {
+                $query->where('rol.id', 2);
+            })
+            ->latest('id')
+            ->get();
+
         return response()->json([
-            'estudiantes' => User::with(['numeroReferencias', 'roles'])
-                ->whereHas('roles', function ($query) {
-                    $query->where('rol.id', 2);
-                })
-                ->latest('id')
-                ->get()
+            'estudiantes' => $estudiantes
         ]);
     }
 
@@ -113,7 +117,7 @@ class EstudianteController extends Controller
             'nombres' => 'required|string|max:50',
             'genero' => 'required|string|in:MASCULINO,FEMENINO',
             'carnet' => 'required|string|max:50|unique:user,ci',
-            'email' => 'required|email|max:100|unique:user,email',
+            'email' => 'nullable|email|max:100|unique:user,email',
             'expedidoEn' => 'required|string|in:LPZ,CBBA,OR,PT,TJ,SCZ,BN,PD,CH,QR,EXT',
             'fechaNacimiento' => 'required|date',
             'direccion' => 'required|string|max:100',
@@ -121,6 +125,7 @@ class EstudianteController extends Controller
             'referenciaNombre' => 'required|string|max:50',
             'referenciaParentesco' => 'required|string|max:50',
             'referenciaNumero' => 'required|string|max:50',
+            'observacionPromociones' => 'nullable|string|max:2000',
         ], [
             'carnet.unique' => 'El carnet ya está registrado.',
             'email.unique' => 'El correo ya está registrado.',
@@ -136,7 +141,9 @@ class EstudianteController extends Controller
                 'usuario' => $validated['carnet'],
                 'password' => Hash::make($validated['carnet']),
                 'ci' => $validated['carnet'],
-                'email' => strtolower($validated['email']),
+                'email' => !empty($validated['email'])
+                ? strtolower($validated['email'])
+                : null,
                 'expedido' => $validated['expedidoEn'],
                 'apellidoPaterno' => $validated['apellidoPaterno'],
                 'apellidoMaterno' => $validated['apellidoMaterno'] ?? '',
@@ -164,9 +171,15 @@ class EstudianteController extends Controller
                 'numeroReferencia' => $validated['referenciaNumero'],
             ]);
 
+            $this->guardarObservacionPromociones(
+                $estudiante->id,
+                $validated['observacionPromociones'] ?? null
+            );
+
             DB::commit();
 
             $estudiante->matricula = $matricula;
+            $estudiante->observacionPromociones = $this->obtenerObservacionPromociones($estudiante->id);
 
             return response()->json([
                 'message' => 'Estudiante registrado correctamente',
@@ -198,6 +211,8 @@ class EstudianteController extends Controller
             ->where('user.id', $id)
             ->firstOrFail();
 
+        $estudiante->observacionPromociones = $this->obtenerObservacionPromociones((int) $id);
+
         return response()->json([
             'estudiante' => $estudiante
         ]);
@@ -221,7 +236,7 @@ class EstudianteController extends Controller
             ],
 
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 'max:100',
                 Rule::unique('user', 'email')->ignore($id, 'id'),
@@ -234,6 +249,7 @@ class EstudianteController extends Controller
             'referenciaNombre' => 'required|string|max:50',
             'referenciaParentesco' => 'required|string|max:50',
             'referenciaNumero' => 'required|string|max:50',
+            'observacionPromociones' => 'nullable|string|max:2000',
         ], [
             'carnet.unique' => 'El carnet ya está registrado.',
             'email.unique' => 'El correo ya está registrado.',
@@ -246,7 +262,9 @@ class EstudianteController extends Controller
             $estudiante->update([
                 'usuario' => $validated['carnet'],
                 'ci' => $validated['carnet'],
-                'email' => strtolower($validated['email']),
+                'email' => !empty($validated['email'])
+                ? strtolower($validated['email'])
+                : null,
                 'expedido' => $validated['expedidoEn'],
                 'apellidoPaterno' => $validated['apellidoPaterno'],
                 'apellidoMaterno' => $validated['apellidoMaterno'] ?? '',
@@ -257,13 +275,24 @@ class EstudianteController extends Controller
                 'celular' => $validated['celular'],
             ]);
 
-            DB::table('Estudiante')->updateOrInsert(
-                ['id_usuario' => $estudiante->id],
-                [
+            $existeEstudiante = DB::table('Estudiante')
+                ->where('id_usuario', $estudiante->id)
+                ->exists();
+
+            if ($existeEstudiante) {
+                DB::table('Estudiante')
+                    ->where('id_usuario', $estudiante->id)
+                    ->update([
+                        'updated_at' => now(),
+                    ]);
+            } else {
+                DB::table('Estudiante')->insert([
+                    'id_usuario' => $estudiante->id,
+                    'matricula' => $this->generarMatricula(),
+                    'created_at' => now(),
                     'updated_at' => now(),
-                    'created_at' => DB::raw('COALESCE(created_at, NOW())'),
-                ]
-            );
+                ]);
+            }
 
             $estudiante->roles()->syncWithoutDetaching([2]);
 
@@ -276,6 +305,11 @@ class EstudianteController extends Controller
                 ]
             );
 
+            $this->guardarObservacionPromociones(
+                $estudiante->id,
+                $validated['observacionPromociones'] ?? null
+            );
+
             DB::commit();
 
             $matricula = DB::table('Estudiante')
@@ -283,6 +317,7 @@ class EstudianteController extends Controller
                 ->value('matricula');
 
             $estudiante->matricula = $matricula;
+            $estudiante->observacionPromociones = $this->obtenerObservacionPromociones($estudiante->id);
 
             return response()->json([
                 'message' => 'Estudiante actualizado correctamente',
@@ -307,6 +342,10 @@ class EstudianteController extends Controller
         DB::beginTransaction();
 
         try {
+            ObservacionUsuario::where('user_id', $estudiante->id)
+                ->where('tipo', 'PROMOCION_REGALO')
+                ->delete();
+
             DB::table('Estudiante')
                 ->where('id_usuario', $estudiante->id)
                 ->delete();
@@ -330,6 +369,40 @@ class EstudianteController extends Controller
                 'line' => $e->getLine(),
             ], 500);
         }
+    }
+
+    private function guardarObservacionPromociones(int $userId, ?string $descripcion): void
+    {
+        $descripcion = trim((string) $descripcion);
+
+        if ($descripcion === '') {
+            ObservacionUsuario::where('user_id', $userId)
+                ->where('tipo', 'PROMOCION_REGALO')
+                ->delete();
+
+            return;
+        }
+
+        ObservacionUsuario::updateOrCreate(
+            [
+                'user_id' => $userId,
+                'tipo' => 'PROMOCION_REGALO',
+            ],
+            [
+                'descripcion' => $descripcion,
+                'fecha_inicio' => now()->toDateString(),
+                'fecha_fin' => null,
+                'creado_por' => Auth::id() ?? $userId,
+            ]
+        );
+    }
+
+    private function obtenerObservacionPromociones(int $userId): ?string
+    {
+        return ObservacionUsuario::where('user_id', $userId)
+            ->where('tipo', 'PROMOCION_REGALO')
+            ->latest('id')
+            ->value('descripcion');
     }
 
     private function generarMatricula(): string

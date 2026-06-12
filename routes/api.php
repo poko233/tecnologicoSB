@@ -439,19 +439,27 @@ Route::apiResource('estudiantes', EstudianteController::class);
     | Recursos Humanos
     |--------------------------------------------------------------------------
     */
-    Route::prefix('recursos-humanos')->group(function () {
+   Route::prefix('recursos-humanos')->group(function () {
+    Route::get('/usuarios', [
+        RecursosHumanosController::class,
+        'usuarios'
+    ]);
 
-        Route::get('/usuarios', [
-            RecursosHumanosController::class,
-            'usuarios'
-        ]);
+    Route::get('/usuarios/{id}', [
+        RecursosHumanosController::class,
+        'usuarioDetalle'
+    ]);
 
-        Route::put('/usuarios/{id}', [
-            RecursosHumanosController::class,
-            'actualizarUsuario'
-        ]);
+    Route::put('/usuarios/{id}', [
+        RecursosHumanosController::class,
+        'actualizarUsuario'
+    ]);
 
-    });
+    Route::post('/usuarios/{id}/foto', [
+        RecursosHumanosController::class,
+        'actualizarFoto'
+    ]);
+});
     /*
     |--------------------------------------------------------------------------
     | Cuotas, matrícula y pagos

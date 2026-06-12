@@ -20,16 +20,16 @@ class User extends Authenticatable
         'password',
         'ci',
         'nombres',
-        'apellidoPaterno',   // ← cambio
-        'apellidoMaterno',   // ← cambio
+        'apellidoPaterno',
+        'apellidoMaterno',
         'genero',
         'fecha_nac',
         'email',
         'telefono',
         'celular',
-        'direccion',         // ← nuevo
-        'matricula',         // ← nuevo
-        'expedido',          // ← nuevo
+        'direccion',
+        'matricula',
+        'expedido',
         'codigo_qr',
         'verificacion',
         'foto',
@@ -47,29 +47,61 @@ class User extends Authenticatable
         ];
     }
 
-    // Relación muchos a muchos con roles (tabla user_rol)
     public function roles()
     {
-        return $this->belongsToMany(Rol::class, 'user_rol', 'id_user', 'id_rol');
+        return $this->belongsToMany(
+            Rol::class,
+            'user_rol',
+            'id_user',
+            'id_rol'
+        );
     }
 
-    // Relación muchos a muchos con sucursales (user_sucursal)
     public function sucursales()
     {
-        return $this->belongsToMany(Sucursal::class, 'user_sucursal', 'id_user', 'id_sucursal');
+        return $this->belongsToMany(
+            Sucursal::class,
+            'user_sucursal',
+            'id_user',
+            'id_sucursal'
+        );
     }
-
-    // ========== NUEVAS RELACIONES (para el módulo de cuotas) ==========
 
     public function cuotas()
     {
-        return $this->hasMany(Cuota::class, 'idUsuario');
+        return $this->hasMany(
+            Cuota::class,
+            'idUsuario',
+            'id'
+        );
     }
 
     public function carreras()
     {
-        return $this->belongsToMany(Carrera::class, 'CarreraUsuario', 'idUsuario', 'idCarrera')
-            ->withPivot('idCarreraUsuario');
+        return $this->belongsToMany(
+            Carrera::class,
+            'CarreraUsuario',
+            'idUsuario',
+            'idCarrera'
+        )->withPivot('idCarreraUsuario');
+    }
+
+    public function numeroReferencias()
+    {
+        return $this->hasOne(
+            NumeroReferencia::class,
+            'idUsuario',
+            'id'
+        );
+    }
+
+    public function documentos()
+    {
+        return $this->hasMany(
+            DocumentoEstudiante::class,
+            'idUsuario',
+            'id'
+        );
     }
 
     public function hasRole(string $rolNombre): bool
@@ -80,10 +112,5 @@ class User extends Authenticatable
     public function hasAnyRole(array $roles): bool
     {
         return $this->roles()->whereIn('rol', $roles)->exists();
-    }
-
-    public function numeroReferencias()
-    {
-        return $this->hasMany(NumeroReferencia::class, 'idUsuario', 'id');
     }
 }
