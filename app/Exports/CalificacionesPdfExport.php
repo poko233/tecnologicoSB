@@ -163,7 +163,6 @@ th.vert div {
             $turno       = strtoupper($data['turno']   ?? 'MAÑANA');
             $gestion     = strtoupper($data['gestion'] ?? ($this->gestion ?? ''));
 
-            // ── Encabezado con logo ───────────────────────────────────
             $html .= '
 <table style="width:100%; border:none; border-collapse:collapse; margin-bottom:3pt;">
   <tr>
@@ -177,8 +176,7 @@ th.vert div {
   </tr>
 </table>';
 
-            // ── Tabla de info ─────────────────────────────────────────
-// ── Tabla de info ─────────────────────────────────────────
+           
 $html .= '
 <table class="info-tabla">
   <colgroup>
@@ -216,7 +214,6 @@ $html .= '
   </tr>
 </table>';
 
-            // ── Tabla principal ───────────────────────────────────────
             $html .= '<table class="main"><thead><tr>';
             $html .= '<th width="3%" rowspan="2"><div class="tf">N°</div></th>';
             $html .= '<th width="22%" rowspan="2"><div class="tf">NÓMINA DE ESTUDIANTES</div></th>';

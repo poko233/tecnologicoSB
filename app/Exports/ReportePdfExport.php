@@ -12,34 +12,27 @@ class ReportePdfExport
 {
     public function __construct(private readonly array $datos) {}
 
-    /** Descarga directa como StreamedResponse. */
     public function download(string $filename = 'planilla.pdf'): \Illuminate\Http\Response
     {
         return $this->buildPdf()->download($filename);
     }
 
-    /** Muestra el PDF en el navegador (inline). */
     public function stream(string $filename = 'planilla.pdf'): \Illuminate\Http\Response
     {
         return $this->buildPdf()->stream($filename);
     }
 
-    /** Guarda en disco. */
     public function guardar(string $rutaAbsoluta): void
     {
         $this->buildPdf()->save($rutaAbsoluta);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Construcción del PDF
-    // ─────────────────────────────────────────────────────────────────────────
-
+    
     private function buildPdf(): \Barryvdh\DomPDF\PDF
     {
         $ecs     = $this->datos['elementos_competencia'];
         $alumnos = $this->datos['estudiantes'];
 
-        // Precalcular resumen
         $aprobados  = count(array_filter($alumnos, fn($e) => ($e['estado'] ?? '') === 'Aprobado'));
         $reprobados = count($alumnos) - $aprobados;
 
