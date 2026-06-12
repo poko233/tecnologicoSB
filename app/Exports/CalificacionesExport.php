@@ -47,7 +47,6 @@ class CalificacionesExport
 
     private function crearHoja(array $data, $ws): void
     {
-        // ── DATOS ────────────────────────────────────────────────────
         $carrera     = (array) $data['carrera'];
         $materias    = array_map(fn($m) => (array) $m, $data['materias']);
         $estudiantes = array_map(fn($e) => (array) $e, $data['estudiantes']);
@@ -58,13 +57,11 @@ class CalificacionesExport
         $ws->setTitle($nombreHoja);
         $ws->setShowGridlines(false);
 
-        // ── DIMENSIONES ───────────────────────────────────────────────
         $totalMaterias  = count($materias);
         $colEstado      = 3 + $totalMaterias + 1;
         $colObservacion = $colEstado + 1;
         $ultimaCol      = Coordinate::stringFromColumnIndex($colObservacion);
 
-        // ── ANCHOS ────────────────────────────────────────────────────
         $ws->getColumnDimension('A')->setWidth(13);
         $ws->getColumnDimension('B')->setWidth(28);
         $ws->getColumnDimension('C')->setWidth(16);
@@ -77,7 +74,6 @@ class CalificacionesExport
         $ws->getColumnDimension(Coordinate::stringFromColumnIndex($colEstado))->setWidth(11);
         $ws->getColumnDimension(Coordinate::stringFromColumnIndex($colObservacion))->setWidth(14);
 
-        // ── ESTILOS ───────────────────────────────────────────────────
         $borderThin = [
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => self::NEGRO]]],
         ];
@@ -98,9 +94,7 @@ class CalificacionesExport
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
         ];
 
-        // ══════════════════════════════════════════════════════════════
-        //  LOGO + TÍTULO (Filas 1-3)
-        // ══════════════════════════════════════════════════════════════
+        
         $ws->getRowDimension(1)->setRowHeight(20);
         $ws->getRowDimension(2)->setRowHeight(20);
         $ws->getRowDimension(3)->setRowHeight(20);
@@ -127,12 +121,9 @@ class CalificacionesExport
         ]);
         $ws->getStyle("A1:{$ultimaCol}3")->applyFromArray($borderMedium);
 
-        // ══════════════════════════════════════════════════════════════
-        //  INFO (Filas 4-8)
-        // ══════════════════════════════════════════════════════════════
+       
         $fila = 4;
 
-        // ── FILA 4: INSTITUCIÓN | TURNO ──────────────────────────────
         $ws->mergeCells("B{$fila}:E{$fila}");
         $ws->mergeCells("G{$fila}:{$ultimaCol}{$fila}");
         $ws->setCellValue("A{$fila}", 'INSTITUCIÓN:');                  $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
@@ -143,7 +134,6 @@ class CalificacionesExport
         $ws->getRowDimension($fila)->setRowHeight(15);
         $fila++;
 
-        // ── FILA 5: GESTIÓN ───────────────────────────────────────────
         $ws->mergeCells("B{$fila}:{$ultimaCol}{$fila}");
         $ws->setCellValue("A{$fila}", 'GESTIÓN:'); $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
         $ws->setCellValue("B{$fila}", $gestion);   $ws->getStyle("B{$fila}")->applyFromArray($styleValue);
@@ -151,7 +141,6 @@ class CalificacionesExport
         $ws->getRowDimension($fila)->setRowHeight(15);
         $fila++;
 
-        // ── FILA 6: NIVEL ─────────────────────────────────────────────
         $ws->mergeCells("B{$fila}:{$ultimaCol}{$fila}");
         $ws->setCellValue("A{$fila}", 'NIVEL:');           $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
         $ws->setCellValue("B{$fila}", 'TÉCNICO SUPERIOR'); $ws->getStyle("B{$fila}")->applyFromArray($styleValue);
@@ -159,7 +148,6 @@ class CalificacionesExport
         $ws->getRowDimension($fila)->setRowHeight(15);
         $fila++;
 
-        // ── FILA 7: CARRERA ───────────────────────────────────────────
         $ws->mergeCells("B{$fila}:{$ultimaCol}{$fila}");
         $ws->setCellValue("A{$fila}", 'CARRERA:');                     $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
         $ws->setCellValue("B{$fila}", strtoupper($carrera['nombre'])); $ws->getStyle("B{$fila}")->applyFromArray($styleValue);
@@ -167,7 +155,6 @@ class CalificacionesExport
         $ws->getRowDimension($fila)->setRowHeight(15);
         $fila++;
 
-        // ── FILA 8: RÉGIMEN | CURSO ───────────────────────────────────
         $ws->mergeCells("B{$fila}:C{$fila}");
         $ws->mergeCells("E{$fila}:{$ultimaCol}{$fila}");
         $ws->setCellValue("A{$fila}", 'RÉGIMEN:');                          $ws->getStyle("A{$fila}")->applyFromArray($styleLabel);
@@ -178,9 +165,7 @@ class CalificacionesExport
         $ws->getRowDimension($fila)->setRowHeight(15);
         $fila++;
 
-        // ══════════════════════════════════════════════════════════════
-        //  CABECERA TABLA NOTAS
-        // ══════════════════════════════════════════════════════════════
+        
         $styleCabecera = array_merge($borderThin, $fillGris, [
             'font'      => ['bold' => true, 'size' => 7, 'name' => 'Arial'],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
@@ -212,9 +197,7 @@ class CalificacionesExport
         $ws->getRowDimension($fila)->setRowHeight(120);
         $fila++;
 
-        // ══════════════════════════════════════════════════════════════
-        //  ESTUDIANTES
-        // ══════════════════════════════════════════════════════════════
+       
         $styleEst = array_merge($borderThin, $fillBlanco, [
             'font'      => ['name' => 'Arial', 'size' => 8],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -245,9 +228,7 @@ class CalificacionesExport
             $fila++;
         }
 
-        // ══════════════════════════════════════════════════════════════
-        //  PÁGINA
-        // ══════════════════════════════════════════════════════════════
+        
         $ws->getPageSetup()
            ->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE)
            ->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4)

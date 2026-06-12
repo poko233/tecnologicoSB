@@ -202,7 +202,6 @@ class ReporteExcelExport
         $ws->getRowDimension($row)->setRowHeight(20);
     }
 
-    // ═══ ANCHOS ═══
     private function anchos(Worksheet $ws, int $nEc): void
     {
         $ws->getColumnDimension('A')->setWidth(10);

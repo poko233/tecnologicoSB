@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Exports\AsistenciaExport;
 
 
 class DocenteAsistenciaController extends Controller
@@ -312,38 +313,13 @@ class DocenteAsistenciaController extends Controller
         );
     }
 
-    public function reporteCsv(int $idGrupoMateriaDocente, Request $request): StreamedResponse
+    public function reporteExcel(int $idGrupoMateriaDocente, Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $datos = $this->obtenerDatosReporte($idGrupoMateriaDocente, $request);
-        $filename = 'asistencia_' . $datos['paralelo'] . '_' . $datos['periodo'] . '.csv';
+        $filename = 'asistencia_' . $datos['paralelo'] . '_' . $datos['periodo'] . '.xlsx';
 
-        return response()->streamDownload(function () use ($datos) {
-            $handle = fopen('php://output', 'w');
-
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
-            fputcsv($handle, ['Carrera', $datos['carrera']]);
-            fputcsv($handle, ['Asignatura', $datos['asignatura']]);
-            fputcsv($handle, ['Docente', $datos['docente']]);
-            fputcsv($handle, ['Paralelo', $datos['paralelo']]);
-            fputcsv($handle, ['Período', $datos['periodo']]);
-            fputcsv($handle, []);
-
-            fputcsv($handle, ['N°', 'Estudiante', 'Carrera', ...$datos['fechas'], '% Asistencia']);
-
-            foreach ($datos['filas'] as $i => $fila) {
-                $row = [$i + 1, $fila['nombre'], $fila['carrera']];
-                foreach ($datos['fechas'] as $fecha) {
-                    $row[] = $fila['asistencias'][$fecha] ?? '-';
-                }
-                $row[] = $fila['porcentaje'] . '%';
-                fputcsv($handle, $row);
-            }
-
-            fclose($handle);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        $export = new AsistenciaExport($datos);
+        return $export->stream($filename);
     }
 
     public function reportePdf(int $idGrupoMateriaDocente, Request $request)

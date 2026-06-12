@@ -50,7 +50,6 @@ class InscritosPorCarreraExport
         $nombreHoja = mb_substr($carrera['codigo'] ?: $carrera['nombre'], 0, 28);
         $ws->setTitle($nombreHoja);
 
-        // Anchos
         $ws->getColumnDimension('A')->setWidth(6);
         $ws->getColumnDimension('B')->setWidth(16);
         $ws->getColumnDimension('C')->setWidth(45);
@@ -58,7 +57,6 @@ class InscritosPorCarreraExport
         $ws->getColumnDimension('E')->setWidth(14);
         $ws->getColumnDimension('F')->setWidth(12);
 
-        // Estilos base
         $borderThin = [
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => self::NEGRO]]],
         ];
@@ -66,12 +64,10 @@ class InscritosPorCarreraExport
             'borders' => ['outline' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => self::NEGRO]]],
         ];
 
-        // ═══ LOGO + TÍTULO (filas 1-3) ═══
         $ws->getRowDimension(1)->setRowHeight(20);
         $ws->getRowDimension(2)->setRowHeight(20);
         $ws->getRowDimension(3)->setRowHeight(20);
 
-        // Logo
         $logoPath = public_path('empresa/logo_largo.png');
         if (file_exists($logoPath)) {
             $drawing = new Drawing();
@@ -84,7 +80,6 @@ class InscritosPorCarreraExport
             $drawing->setWorksheet($ws);
         }
 
-        // Título centrado (columnas C-F, filas 1-3)
         $ws->mergeCells('C1:F3');
         $ws->setCellValue('C1', 'INSCRITOS POR CARRERA');
         $ws->getStyle('C1:F3')->applyFromArray([
@@ -93,12 +88,10 @@ class InscritosPorCarreraExport
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => self::BLANCO]],
         ]);
 
-        // Borde exterior del bloque logo+título
         $ws->getStyle('A1:F3')->applyFromArray($borderMedium);
 
         $fila = 4;
 
-        // ═══ INFO CARRERA ═══
         $ws->mergeCells("A{$fila}:F{$fila}");
         $ws->setCellValue("A{$fila}", 'CARRERA: ' . strtoupper($carrera['nombre']) . '     |     TOTAL: ' . count($estudiantes) . ' INSCRITOS');
         $ws->getStyle("A{$fila}:F{$fila}")->applyFromArray([
@@ -111,7 +104,6 @@ class InscritosPorCarreraExport
         $fila++;
         $fila++;
 
-        // ═══ CABECERA TABLA ═══
         $headers = ['N°', 'CARNET', 'ESTUDIANTE', 'FECHA INSCRIPCIÓN', 'GESTIÓN', 'TURNO'];
         foreach ($headers as $ci => $h) {
             $col = Coordinate::stringFromColumnIndex($ci + 1);
@@ -126,7 +118,6 @@ class InscritosPorCarreraExport
         $ws->getRowDimension($fila)->setRowHeight(20);
         $fila++;
 
-        // ═══ ESTUDIANTES ═══
         $n = 1;
         foreach ($estudiantes as $est) {
             $row = [
@@ -154,7 +145,6 @@ class InscritosPorCarreraExport
             $fila++;
         }
 
-        // ═══ CONFIGURACIÓN PÁGINA ═══
         $ws->getPageSetup()
            ->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_PORTRAIT)
            ->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4)

@@ -75,31 +75,22 @@
         color: #000;
     }
 
-    /* ── LEYENDA ── */
-    .leyenda {
+        .leyenda {
         margin-bottom: 8px;
-        padding: 4px 8px;
+        padding: 5px 10px;
         border: 1px solid #ccc;
-        font-size: 7px;
+        border-radius: 3px;
+        font-size: 7.5px;
         background: #fafafa;
         display: flex;
-        gap: 14px;
+        gap: 16px;
         align-items: center;
-    }
-    .leyenda strong {
-        display: inline-block;
-        width: 14px;
-        height: 14px;
-        text-align: center;
-        line-height: 14px;
-        font-size: 7px;
-        font-weight: 900;
-        border: 1px solid #aaa;
-        background: #fff;
-        color: #000;
-    }
-    .leyenda span {
+        flex-wrap: wrap;
         color: #333;
+    }
+    .leyenda b {
+        font-weight: 900;
+        color: #000;
     }
 
     /* ── TABLA PRINCIPAL CORREGIDA CON TEXTO NEGRO ── */
@@ -110,11 +101,10 @@
         table-layout: fixed;
     }
 
-    /* Cabecera de la tabla (Sigue la línea oscura oficial) */
     table.att thead tr th {
-        background: #000000;
-        color: #ffffff;
-        border: 1px solid #333333;
+        background: #d9d9d9;
+        color: #000000;
+        border: 1px solid #999999;
         padding: 6px 2px;
         text-align: center;
         font-size: 6.5px;
@@ -252,7 +242,6 @@
     </div>
     <div class="header-center">
         <h1>Registro de Asistencia Estudiantil</h1>
-        <div class="sub">Documento Oficial — Uso Académico Exclusivo</div>
     </div>
 </div>
 
@@ -291,11 +280,11 @@
 
 {{-- ── LEYENDA ── --}}
 <div class="leyenda">
-    <strong>P</strong><span>Presente</span>
-    <strong>A</strong><span>Ausente</span>
-    <strong>T</strong><span>Tardanza</span>
-    <strong>J</strong><span>Justificado</span>
-    <strong style="color:#bbb">–</strong><span>Sin registro</span>
+    <span><b>P</b> = Presente</span>
+    <span><b>A</b> = Ausente</span>
+    <span><b>T</b> = Tardanza</span>
+    <span><b>J</b> = Justificado</span>
+    <span><b>–</b> = Sin registro</span>
 </div>
 
 {{-- ── TABLA CON TEXTO NEGRO FIJO ── --}}

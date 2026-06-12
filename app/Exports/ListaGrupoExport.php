@@ -50,12 +50,11 @@ class ListaGrupoExport
         $nombreHoja = mb_substr($grupo['grupo'] ?? 'Grupo', 0, 28);
         $ws->setTitle($nombreHoja);
 
-        // ═══ ANCHOS DE COLUMNA (MÁS GRANDES) ═══
-        $ws->getColumnDimension('A')->setWidth(9);    // N°
-        $ws->getColumnDimension('B')->setWidth(55);   // NOMBRES Y APELLIDOS
-        $ws->getColumnDimension('C')->setWidth(18);   // CARNET
-        $ws->getColumnDimension('D')->setWidth(18);   // CELULAR
-        $ws->getColumnDimension('E')->setWidth(35);   // OBSERVACIÓN
+        $ws->getColumnDimension('A')->setWidth(9);    
+        $ws->getColumnDimension('B')->setWidth(55);   
+        $ws->getColumnDimension('C')->setWidth(18);   
+        $ws->getColumnDimension('D')->setWidth(18);  
+        $ws->getColumnDimension('E')->setWidth(35);  
 
         $borderThin = [
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => self::NEGRO]]],
@@ -64,7 +63,6 @@ class ListaGrupoExport
             'borders' => ['outline' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => self::NEGRO]]],
         ];
 
-        // ═══ LOGO + TÍTULO (filas 1-3) ═══
         $ws->getRowDimension(1)->setRowHeight(20);
         $ws->getRowDimension(2)->setRowHeight(20);
         $ws->getRowDimension(3)->setRowHeight(20);
@@ -89,7 +87,6 @@ class ListaGrupoExport
         ]);
         $ws->getStyle('A1:E3')->applyFromArray($borderMedium);
 
-        // ═══ INFO (filas 4-8) ═══
         $fila = 4;
         $info = [
             ['CARRERA:', $grupo['carrera'] ?? ''],
@@ -115,7 +112,6 @@ class ListaGrupoExport
         }
         $fila++;
 
-        // ═══ CABECERA TABLA ═══
         $headers = ['N°', 'NOMBRES Y APELLIDOS', 'CARNET', 'CELULAR', 'OBSERVACIÓN'];
         foreach ($headers as $ci => $h) {
             $col = Coordinate::stringFromColumnIndex($ci + 1);
@@ -130,7 +126,6 @@ class ListaGrupoExport
         $ws->getRowDimension($fila)->setRowHeight(22);
         $fila++;
 
-        // ═══ ESTUDIANTES ═══
         $n = 1;
         foreach ($estudiantes as $est) {
             $row = [
@@ -156,7 +151,6 @@ class ListaGrupoExport
             $fila++;
         }
 
-        // ═══ CONFIGURACIÓN PÁGINA: HORIZONTAL ═══
         $ws->getPageSetup()
            ->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE)
            ->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4)

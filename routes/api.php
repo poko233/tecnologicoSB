@@ -91,7 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/docentes/{idDocente}/activar', [DocenteController::class, 'activar']);
 
 
-    Route::get('/docente/grupos-asignados/{idGrupoMateriaDocente}/reporte/csv', [DocenteAsistenciaController::class, 'reporteCsv']);
+    Route::get('/docente/grupos-asignados/{idGrupoMateriaDocente}/reporte/excel', [DocenteAsistenciaController::class, 'reporteExcel']);
     Route::get('/docente/grupos-asignados/{idGrupoMateriaDocente}/reporte/pdf', [DocenteAsistenciaController::class, 'reportePdf']);
     /*
     |--------------------------------------------------------------------------
