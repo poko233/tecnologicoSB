@@ -39,19 +39,6 @@ use App\Http\Controllers\ReporteCalificacionesController;
 use App\Http\Controllers\ReporteInscritosController;
 use App\Http\Controllers\ReporteListaGrupoController;
 
-Route::get('/reportes/lista-grupo/filtros', [ReporteListaGrupoController::class, 'filtros']);
-Route::get('/reportes/lista-grupo/xlsx', [ReporteListaGrupoController::class, 'xlsx']);
-Route::get('/reportes/lista-grupo/pdf', [ReporteListaGrupoController::class, 'pdf']);
-
-Route::get('/reportes/inscritos-carrera/filtros', [ReporteInscritosController::class, 'filtros']);
-Route::get('/reportes/inscritos-carrera/xlsx', [ReporteInscritosController::class, 'xlsx']);
-Route::get('/reportes/inscritos-carrera/pdf', [ReporteInscritosController::class, 'pdf']);
-
-Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
-Route::get('/reportes/calificaciones/preview', [ReporteCalificacionesController::class, 'preview']);
-Route::get('/reportes/calificaciones/xlsx', [ReporteCalificacionesController::class, 'xlsx']);
-Route::get('/reportes/calificaciones/pdf', [ReporteCalificacionesController::class, 'pdf']);
-Route::get('/reportes/calificaciones/filtros', [ReporteCalificacionesController::class, 'filtros']);
 
 Route::post('/qr/debug-generate', [QrController::class, 'debugGenerate']);
 Route::post('/qr/regenerate-all', [QrController::class, 'regenerateAll']);
@@ -114,11 +101,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/planilla/guardar', [NotasController::class, 'guardarNotas']);
     });
 
+    Route::get('/reportes/calificaciones/preview', [ReporteCalificacionesController::class, 'preview']);
+    Route::get('/reportes/calificaciones/xlsx', [ReporteCalificacionesController::class, 'xlsx']);
+    Route::get('/reportes/calificaciones/pdf', [ReporteCalificacionesController::class, 'pdf']);
+    Route::get('/reportes/calificaciones/filtros', [ReporteCalificacionesController::class, 'filtros']);
 
-    Route::get('/reportes/{idGrupoMateriaDocente}/excel', [PlanillaReporteController::class, 'excel']);
-    Route::get('/reportes/{idGrupoMateriaDocente}/pdf', [PlanillaReporteController::class, 'pdf']);
-    Route::get('/reportes/{idGrupoMateriaDocente}/pdf/ver', [PlanillaReporteController::class, 'pdfVer']);
+    Route::get('/reportes/{idGrupoMateriaDocente}/excel', [PlanillaReporteController::class, 'excel'])->where('idGrupoMateriaDocente', '[0-9]+');
+    Route::get('/reportes/{idGrupoMateriaDocente}/pdf', [PlanillaReporteController::class, 'pdf'])->where('idGrupoMateriaDocente', '[0-9]+');
+    Route::get('/reportes/{idGrupoMateriaDocente}/pdf/ver', [PlanillaReporteController::class, 'pdfVer'])->where('idGrupoMateriaDocente', '[0-9]+');
+    Route::get('/reportes/lista-grupo/filtros', [ReporteListaGrupoController::class, 'filtros']);
 
+    Route::get('/reportes/lista-grupo/xlsx', [ReporteListaGrupoController::class, 'xlsx']);
+    Route::get('/reportes/lista-grupo/pdf', [ReporteListaGrupoController::class, 'pdf']);
+
+    Route::get('/reportes/inscritos-carrera/filtros', [ReporteInscritosController::class, 'filtros']);
+    Route::get('/reportes/inscritos-carrera/xlsx', [ReporteInscritosController::class, 'xlsx']);
+    Route::get('/reportes/inscritos-carrera/pdf', [ReporteInscritosController::class, 'pdf']);
+
+    Route::get('/pagos/{id}/recibo', [ReciboController::class, 'descargar']);
+    
 
 
     /*
