@@ -55,7 +55,7 @@ Route::get('/reportes/calificaciones/filtros', [ReporteCalificacionesController:
 
 Route::post('/qr/debug-generate', [QrController::class, 'debugGenerate']);
 Route::post('/qr/regenerate-all', [QrController::class, 'regenerateAll']);
-
+ 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
