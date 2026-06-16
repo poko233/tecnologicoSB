@@ -42,22 +42,30 @@ class EmpresaController extends Controller
     public function update(UpdateEmpresaRequest $request): JsonResponse
     {
         try {
+            $archivos = [];
+            foreach (['LOGO_CUADRADO', 'LOGO_LARGO', 'BANER_INICIO', 'ICONO'] as $campo) {
+                if ($request->hasFile($campo)) {
+                    $archivos[$campo] = $request->file($campo);
+                }
+            }
+
             $empresa = $this->empresaService->actualizar(
-                $request->validated()
+                $request->validated(),
+                $archivos
             );
- 
+
             return response()->json([
                 'success' => true,
                 'message' => 'Configuración actualizada correctamente.',
                 'data'    => $empresa,
             ]);
- 
+
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 404);
- 
+
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
