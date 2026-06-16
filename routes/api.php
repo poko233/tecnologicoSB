@@ -373,7 +373,7 @@ Route::middleware('auth:sanctum')->group(function () {
     ]);
 
     Route::prefix('empresa')->group(function () {
-        Route::patch('/', [EmpresaController::class, 'update']);
+        Route::match(['put', 'patch'], '/', [EmpresaController::class, 'update']);
     });
     /*
     |--------------------------------------------------------------------------

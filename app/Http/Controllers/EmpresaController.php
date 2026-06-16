@@ -70,6 +70,9 @@ class EmpresaController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al actualizar la configuración.',
+                'debug_error' => $e->getMessage(),
+                'debug_file' => $e->getFile() . ':' . $e->getLine(),
+                'debug_trace' => collect($e->getTrace())->take(5)->toArray(),
             ], 500);
         }
     }
