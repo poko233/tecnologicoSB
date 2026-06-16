@@ -40,10 +40,10 @@ class UpdateEmpresaRequest extends FormRequest
             'CARRITO'               => ['sometimes', 'in:ACTIVO,INACTIVO'],
             'TIPO_CAMBIO'           => ['sometimes', 'nullable', 'numeric', 'min:0'],
  
-            'LOGO_CUADRADO'         => ['sometimes', 'nullable', 'string', 'max:80'],
-            'LOGO_LARGO'            => ['sometimes', 'nullable', 'string', 'max:80'],
-            'BANER_INICIO'          => ['sometimes', 'nullable', 'string', 'max:80'],
-            'ICONO'                 => ['sometimes', 'nullable', 'string', 'max:40'],
+            'LOGO_CUADRADO' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'LOGO_LARGO'    => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'BANER_INICIO'  => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:4096'],
+            'ICONO'         => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,ico', 'max:1024'],
  
             'TITULO_CIERRE'         => ['sometimes', 'nullable', 'string', 'max:80'],
             'MENSAJE_CIERRE'        => ['sometimes', 'nullable', 'string'],

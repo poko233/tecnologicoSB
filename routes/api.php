@@ -57,7 +57,7 @@ Route::get('/inscripcion/formulario-registro/{idUsuario}/pdf', [
     ResumenInscripcionController::class,
     'formularioRegistroPdf'
 ]);
-
+Route::get('/empresa', [EmpresaController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('mis-modulos', MisModulosController::class);
@@ -372,6 +372,9 @@ Route::middleware('auth:sanctum')->group(function () {
         'destroy'
     ]);
 
+    Route::prefix('empresa')->group(function () {
+        Route::patch('/', [EmpresaController::class, 'update']);
+    });
     /*
     |--------------------------------------------------------------------------
     | Formularios
@@ -501,16 +504,5 @@ Route::middleware('auth:sanctum')->group(function () {
         PagoController::class,
         'index'
     ])->name('pagos.index');
-
-    Route::prefix('empresa')->group(function () {
-        Route::get('/', [
-            EmpresaController::class,
-            'show'
-        ]);
-
-        Route::patch('/', [
-            EmpresaController::class,
-            'update'
-        ]);
-    });
+    
 });
