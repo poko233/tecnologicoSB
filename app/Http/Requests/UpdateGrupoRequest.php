@@ -17,7 +17,7 @@ class UpdateGrupoRequest extends FormRequest
 
         return [
             'nombre'   => 'sometimes|required|string|max:50',
-            'codigo'   => "sometimes|required|string|max:50|unique:Grupo,codigo,{$idGrupo},idGrupo",
+            'codigo'   => "sometimes|required|string|max:50,{$idGrupo},idGrupo",
             'paralelo' => 'sometimes|nullable|string|max:50',
             'turno'    => 'sometimes|required|in:Mañana,Tarde,Noche',
             'gestion'  => 'sometimes|required|string|max:20',
