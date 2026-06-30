@@ -17,7 +17,7 @@ class UpdateCarreraRequest extends FormRequest
 
         return [
             'nombreCarrera'                  => 'sometimes|required|string|max:50',
-            'codigo'                         => "sometimes|required|string|max:50|unique:Carrera,codigo,{$idCarrera},idCarrera",
+            'codigo'                         => "sometimes|required|string|max:50,{$idCarrera},idCarrera",
             'tipo'                           => 'sometimes|nullable|string|max:20',
             'regimen'                        => 'sometimes|nullable|in:Anual,Semestral,Mensual,Otro',
             'duracion'                       => 'sometimes|nullable|integer|min:1',

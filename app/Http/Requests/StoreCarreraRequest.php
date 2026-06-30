@@ -15,7 +15,7 @@ class StoreCarreraRequest extends FormRequest
     {
         return [
             'nombreCarrera'                  => 'required|string|max:50',
-            'codigo'                         => 'required|string|max:50|unique:Carrera,codigo',
+            'codigo'                         => 'required|string|max:50',
             'tipo'                           => 'nullable|string|max:20',
             'regimen'                        => 'nullable|in:Anual,Semestral,Mensual,Otro',
             'duracion'                       => 'nullable|integer|min:1',
