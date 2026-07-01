@@ -367,7 +367,15 @@ class DocenteAsistenciaController extends Controller
             ->values()
             ->toArray();
 
-        $filas = $inscripciones->map(function ($inscripcion) use ($registros, $fechas) {
+        // Sesiones únicas = combinaciones (fecha, idHorario) — pueden ser varias por día
+        $totalSesiones = $registros
+            ->map(fn($r) => ($r->fecha instanceof Carbon ? $r->fecha->toDateString() : (string) $r->fecha) . '_' . ($r->idHorario ?? 'null'))
+            ->unique()
+            ->count();
+
+        $pesos = ['Presente' => 1.0, 'Permiso' => 1.0, 'Atraso' => 0.5, 'Falta' => 0.0];
+
+        $filas = $inscripciones->map(function ($inscripcion) use ($registros, $fechas, $totalSesiones, $pesos) {
             $user = $inscripcion->usuario;
             $carreraEst = $user->carreras()->where('estadoCarrera', 'activo')->first();
 
@@ -377,22 +385,20 @@ class DocenteAsistenciaController extends Controller
                     $fecha = $r->fecha instanceof Carbon
                         ? $r->fecha->toDateString()
                         : (string) $r->fecha;
-                    $abrev = match (strtolower($r->tipo)) {
-                        'presente' => 'P',
-                        'ausente' => 'A',
-                        'tardanza' => 'T',
-                        'justificado' => 'J',
-                        default => strtoupper(substr($r->tipo, 0, 1)),
+                    $abrev = match ($r->tipo) {
+                        'Presente' => 'P',
+                        'Permiso'  => 'L',
+                        'Falta'    => 'F',
+                        'Atraso'   => 'A',
+                        default    => strtoupper(substr($r->tipo, 0, 1)),
                     };
                     return [$fecha => $abrev];
                 });
 
-            $totalFechas = count($fechas);
-            $presentes = $registros
+            $sumaPesos = $registros
                 ->where('idInscripcion', $inscripcion->idInscripcion)
-                ->whereIn('tipo', ['presente', 'justificado', 'Presente', 'Justificado'])
-                ->count();
-            $porcentaje = $totalFechas > 0 ? round(($presentes / $totalFechas) * 100, 1) : 0;
+                ->sum(fn($r) => $pesos[$r->tipo] ?? 0.0);
+            $porcentaje = $totalSesiones > 0 ? min(100.0, round(($sumaPesos / $totalSesiones) * 100, 1)) : 0;
 
             return [
                 'nombre' => trim("{$user->nombres} {$user->apellidoPaterno} {$user->apellidoMaterno}"),

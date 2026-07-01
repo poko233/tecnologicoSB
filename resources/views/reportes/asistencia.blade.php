@@ -281,9 +281,9 @@
 {{-- ── LEYENDA ── --}}
 <div class="leyenda">
     <span><b>P</b> = Presente</span>
-    <span><b>A</b> = Ausente</span>
-    <span><b>T</b> = Tardanza</span>
-    <span><b>J</b> = Justificado</span>
+    <span><b>L</b> = Licencia</span>
+    <span><b>A</b> = Atraso</span>
+    <span><b>F</b> = Falta</span>
     <span><b>–</b> = Sin registro</span>
 </div>
 
@@ -323,20 +323,6 @@
             </tr>
         @endforelse
     </tbody>
-    <tfoot>
-        <tr>
-            <td colspan="2" class="td-total-label">Total Presentes por Sesión →</td>
-            @foreach ($fechas as $fecha)
-                @php
-                    $total = collect($filas)
-                        ->filter(fn($f) => ($f['asistencias'][$fecha] ?? null) === 'P')
-                        ->count();
-                @endphp
-                <td class="td-sess">{{ $total }}</td>
-            @endforeach
-            <td></td>
-        </tr>
-    </tfoot>
 </table>
 
 {{-- ── FIRMA ── --}}
