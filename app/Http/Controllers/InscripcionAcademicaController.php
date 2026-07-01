@@ -7,6 +7,7 @@ use App\Models\Grupo;
 use App\Models\Inscripcion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class InscripcionAcademicaController extends Controller
 {
@@ -122,27 +123,41 @@ class InscripcionAcademicaController extends Controller
                     ->first();
 
                 if (!$grupo) {
-                    return response()->json([
-                        'message' => 'El grupo seleccionado está inactivo o no existe.',
-                    ], 422);
+                    throw ValidationException::withMessages([
+                        'idGrupo' => [
+                            'El grupo seleccionado está inactivo o no existe.',
+                        ],
+                    ]);
                 }
 
-                $existeGrupo = Inscripcion::where('idUsuario', $validated['idUsuario'])
+                $existeGrupo = Inscripcion::where(
+                    'idUsuario',
+                    $validated['idUsuario']
+                )
                     ->where('idGrupo', $validated['idGrupo'])
                     ->exists();
 
                 if ($existeGrupo) {
-                    return response()->json([
-                        'message' => 'El estudiante ya está inscrito en este grupo.',
-                    ], 422);
+                    throw ValidationException::withMessages([
+                        'idGrupo' => [
+                            'El estudiante ya está inscrito en este grupo.',
+                        ],
+                    ]);
                 }
 
                 if ((int) $grupo->cupos <= 0) {
-                    return response()->json([
-                        'message' => 'No hay cupos disponibles para este grupo.',
-                    ], 422);
+                    throw ValidationException::withMessages([
+                        'idGrupo' => [
+                            'No hay cupos disponibles para este grupo.',
+                        ],
+                    ]);
                 }
 
+                /*
+                 * Si el estudiante ya tiene carrera:
+                 * - Permite continuar únicamente si es la misma carrera.
+                 * - Rechaza una carrera diferente.
+                 */
                 $this->registrarCarreraUsuario(
                     (int) $validated['idUsuario'],
                     (int) $validated['idCarrera']
@@ -155,7 +170,10 @@ class InscripcionAcademicaController extends Controller
 
                 $grupo->decrement('cupos');
 
-                $grupoActualizado = Grupo::where('idGrupo', $validated['idGrupo'])->first();
+                $grupoActualizado = Grupo::where(
+                    'idGrupo',
+                    $validated['idGrupo']
+                )->first();
 
                 return response()->json([
                     'message' => 'Estudiante inscrito correctamente al grupo.',
@@ -164,101 +182,81 @@ class InscripcionAcademicaController extends Controller
                     'cupos_restantes' => $grupoActualizado?->cupos,
                 ], 201);
             });
+        } catch (ValidationException $e) {
+            return $this->respuestaValidacion($e);
         } catch (\Throwable $e) {
+            \Log::error('ERROR INSCRIBIR ESTUDIANTE', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
             return response()->json([
                 'message' => 'No se pudo inscribir al estudiante.',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Primera vez:
+     * - Registra CarreraUsuario.
+     * - Crea las cuotas.
+     *
+     * Siguientes veces:
+     * - No crea otra carrera.
+     * - Actualiza las cuotas de la carrera ya registrada.
+     */
     public function guardarPagoCuotas(Request $request)
     {
+        $validated = $request->validate([
+            'idUsuario' => 'required|exists:user,id',
+            'idCarrera' => 'required|exists:Carrera,idCarrera',
+
+            'matricula' => 'required|array',
+            'matricula.monto' => 'required|numeric|min:0',
+            'matricula.descuento' => 'nullable|numeric|min:0',
+            'matricula.fecha_vencimiento' => 'required|date',
+
+            'cuotas' => 'required|array|min:1',
+            'cuotas.*.numeroCuota' => 'required|integer|min:1|distinct',
+            'cuotas.*.monto' => 'required|numeric|min:0',
+            'cuotas.*.descuento' => 'nullable|numeric|min:0',
+            'cuotas.*.fecha_vencimiento' => 'required|date',
+            'cuotas.*.estadoCuota' => 'nullable|in:Debe,Condonado',
+        ]);
+
         try {
-            \Log::info('INICIO GUARDAR CUOTAS', $request->all());
+            $resultado = DB::transaction(function () use ($validated) {
+                $carreraCreada = $this->registrarCarreraUsuario(
+                    (int) $validated['idUsuario'],
+                    (int) $validated['idCarrera']
+                );
 
-            $validated = $request->validate([
-                'idUsuario' => 'required|exists:user,id',
-                'idCarrera' => 'required|exists:Carrera,idCarrera',
+                $resumenCuotas = $this->guardarOActualizarCuotas($validated);
 
-                'matricula' => 'required|array',
-                'matricula.monto' => 'required|numeric|min:0',
-                'matricula.descuento' => 'nullable|numeric|min:0',
-                'matricula.fecha_vencimiento' => 'required|date',
-
-                'cuotas' => 'required|array|min:1',
-                'cuotas.*.numeroCuota' => 'required|integer|min:1',
-                'cuotas.*.monto' => 'required|numeric|min:0',
-                'cuotas.*.descuento' => 'nullable|numeric|min:0',
-                'cuotas.*.fecha_vencimiento' => 'required|date',
-                'cuotas.*.estadoCuota' => 'nullable|in:Debe,Condonado',
-            ]);
-
-            \Log::info('VALIDACION OK CUOTAS');
-
-            $this->registrarCarreraUsuario(
-                (int) $validated['idUsuario'],
-                (int) $validated['idCarrera']
-            );
-
-            \Log::info('CARRERA USUARIO OK');
-
-            DB::table('Cuota')
-                ->where('idUsuario', $validated['idUsuario'])
-                ->where('idCarrera', $validated['idCarrera'])
-                ->delete();
-
-            \Log::info('CUOTAS ANTERIORES BORRADAS');
-
-            $now = now();
-            $filas = [];
-
-            $filas[] = [
-                'idUsuario' => $validated['idUsuario'],
-                'idCarrera' => $validated['idCarrera'],
-                'tipo' => 'MATRICULA',
-                'monto' => $validated['matricula']['monto'],
-                'numeroCuota' => '0',
-                'fecha_vencimiento' => $validated['matricula']['fecha_vencimiento'],
-                'descuento' => $validated['matricula']['descuento'] ?? 0,
-                'estadoCuota' => 'Debe',
-                'fecha_pago' => null,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
-
-            foreach ($validated['cuotas'] as $cuota) {
-                $filas[] = [
-                    'idUsuario' => $validated['idUsuario'],
-                    'idCarrera' => $validated['idCarrera'],
-                    'tipo' => 'MENSUAL',
-                    'monto' => $cuota['monto'],
-                    'numeroCuota' => (string) $cuota['numeroCuota'],
-                    'fecha_vencimiento' => $cuota['fecha_vencimiento'],
-                    'descuento' => $cuota['descuento'] ?? 0,
-                    'estadoCuota' => $cuota['estadoCuota'] ?? 'Debe',
-                    'fecha_pago' => null,
-                    'created_at' => $now,
-                    'updated_at' => $now,
+                return [
+                    'carreraCreada' => $carreraCreada,
+                    ...$resumenCuotas,
                 ];
-            }
-
-            \Log::info('FILAS ARMADAS', [
-                'cantidad' => count($filas),
-            ]);
-
-            DB::table('Cuota')->insert($filas);
-
-            \Log::info('CUOTAS INSERTADAS');
+            });
 
             return response()->json([
                 'ok' => true,
                 'guardado' => true,
-                'message' => 'Plan de cuotas guardado correctamente.',
-                'total_insertado' => count($filas),
-            ], 201);
+                'actualizado' => !$resultado['carreraCreada'],
+                'message' => $resultado['carreraCreada']
+                    ? 'Carrera y plan de cuotas guardados correctamente.'
+                    : 'Plan de cuotas actualizado correctamente.',
+                'total_insertado' => $resultado['insertadas'],
+                'total_actualizado' => $resultado['actualizadas'],
+                'total_eliminado' => $resultado['eliminadas'],
+            ], $resultado['carreraCreada'] ? 201 : 200);
+        } catch (ValidationException $e) {
+            return $this->respuestaValidacion($e);
         } catch (\Throwable $e) {
-            \Log::error('ERROR GUARDAR CUOTAS', [
+            \Log::error('ERROR GUARDAR O ACTUALIZAR CUOTAS', [
+                'idUsuario' => $validated['idUsuario'] ?? null,
+                'idCarrera' => $validated['idCarrera'] ?? null,
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -268,25 +266,49 @@ class InscripcionAcademicaController extends Controller
                 'ok' => false,
                 'guardado' => false,
                 'message' => 'No se pudo guardar el plan de cuotas.',
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
             ], 500);
         }
     }
 
-    private function registrarCarreraUsuario(int $idUsuario, int $idCarrera): void
-    {
-        $existe = DB::table('CarreraUsuario')
+    /**
+     * Crea la carrera solo si el estudiante no tiene una.
+     *
+     * Retorna:
+     * - true: si se creó CarreraUsuario.
+     * - false: si el estudiante ya tenía la misma carrera.
+     *
+     * Lanza error 422 si intenta registrar una carrera diferente.
+     */
+    private function registrarCarreraUsuario(
+        int $idUsuario,
+        int $idCarrera
+    ): bool {
+        $carreraActual = DB::table('CarreraUsuario')
             ->where('idUsuario', $idUsuario)
-            ->where('idCarrera', $idCarrera)
-            ->exists();
+            ->lockForUpdate()
+            ->first();
 
-        if ($existe) {
-            return;
+        if ($carreraActual) {
+            if ((int) $carreraActual->idCarrera !== $idCarrera) {
+                $nombreCarreraActual = DB::table('Carrera')
+                    ->where('idCarrera', $carreraActual->idCarrera)
+                    ->value('nombreCarrera');
+
+                throw ValidationException::withMessages([
+                    'idCarrera' => [
+                        'El estudiante ya está inscrito en la carrera: ' .
+                        ($nombreCarreraActual
+                            ?: 'ID ' . $carreraActual->idCarrera) .
+                        '. Solo se pueden editar sus cuotas; no se puede cambiar ni agregar otra carrera.',
+                    ],
+                ]);
+            }
+
+            return false;
         }
 
-        $columnas = DB::getSchemaBuilder()->getColumnListing('CarreraUsuario');
+        $columnas = DB::getSchemaBuilder()
+            ->getColumnListing('CarreraUsuario');
 
         $data = [
             'idUsuario' => $idUsuario,
@@ -310,5 +332,147 @@ class InscripcionAcademicaController extends Controller
         }
 
         DB::table('CarreraUsuario')->insert($data);
+
+        return true;
+    }
+
+    /**
+     * Actualiza las cuotas existentes por tipo y número.
+     *
+     * Ejemplos:
+     * - MATRICULA:0
+     * - MENSUAL:1
+     * - MENSUAL:2
+     *
+     * No elimina cuotas que ya tienen fecha_pago.
+     */
+    private function guardarOActualizarCuotas(array $validated): array
+    {
+        $idUsuario = (int) $validated['idUsuario'];
+        $idCarrera = (int) $validated['idCarrera'];
+        $ahora = now();
+
+        $filasEntrantes = [];
+
+        $filasEntrantes['MATRICULA:0'] = [
+            'idUsuario' => $idUsuario,
+            'idCarrera' => $idCarrera,
+            'tipo' => 'MATRICULA',
+            'monto' => $validated['matricula']['monto'],
+            'numeroCuota' => '0',
+            'fecha_vencimiento' => $validated['matricula']['fecha_vencimiento'],
+            'descuento' => $validated['matricula']['descuento'] ?? 0,
+            'estadoCuota' => 'Debe',
+            'created_at' => $ahora,
+            'updated_at' => $ahora,
+        ];
+
+        foreach ($validated['cuotas'] as $cuota) {
+            $numeroCuota = (int) $cuota['numeroCuota'];
+
+            $filasEntrantes['MENSUAL:' . $numeroCuota] = [
+                'idUsuario' => $idUsuario,
+                'idCarrera' => $idCarrera,
+                'tipo' => 'MENSUAL',
+                'monto' => $cuota['monto'],
+                'numeroCuota' => (string) $numeroCuota,
+                'fecha_vencimiento' => $cuota['fecha_vencimiento'],
+                'descuento' => $cuota['descuento'] ?? 0,
+                'estadoCuota' => $cuota['estadoCuota'] ?? 'Debe',
+                'created_at' => $ahora,
+                'updated_at' => $ahora,
+            ];
+        }
+
+        $existentes = DB::table('Cuota')
+            ->where('idUsuario', $idUsuario)
+            ->where('idCarrera', $idCarrera)
+            ->lockForUpdate()
+            ->get();
+
+        $existentesPorClave = $existentes->keyBy(function ($cuota) {
+            return strtoupper((string) $cuota->tipo) .
+                ':' .
+                (int) $cuota->numeroCuota;
+        });
+
+        $insertadas = 0;
+        $actualizadas = 0;
+        $eliminadas = 0;
+
+        foreach ($filasEntrantes as $clave => $fila) {
+            $existente = $existentesPorClave->get($clave);
+
+            if (!$existente) {
+                DB::table('Cuota')->insert($fila);
+                $insertadas++;
+                continue;
+            }
+
+            /*
+             * fecha_pago no se modifica.
+             * Si una cuota ya fue pagada, el pago sigue conservado.
+             */
+            DB::table('Cuota')
+                ->where('idCuota', $existente->idCuota)
+                ->update([
+                    'monto' => $fila['monto'],
+                    'fecha_vencimiento' => $fila['fecha_vencimiento'],
+                    'descuento' => $fila['descuento'],
+                    'estadoCuota' => $fila['estadoCuota'],
+                    'updated_at' => $ahora,
+                ]);
+
+            $actualizadas++;
+        }
+
+        /*
+         * Si se reduce la cantidad de cuotas, elimina solamente
+         * las cuotas quitadas que todavía no tengan pago.
+         */
+        foreach ($existentes as $existente) {
+            $clave = strtoupper((string) $existente->tipo) .
+                ':' .
+                (int) $existente->numeroCuota;
+
+            if (array_key_exists($clave, $filasEntrantes)) {
+                continue;
+            }
+
+            if (!empty($existente->fecha_pago)) {
+                throw ValidationException::withMessages([
+                    'cuotas' => [
+                        "No se puede eliminar la cuota {$existente->numeroCuota} porque ya tiene un pago registrado.",
+                    ],
+                ]);
+            }
+
+            DB::table('Cuota')
+                ->where('idCuota', $existente->idCuota)
+                ->delete();
+
+            $eliminadas++;
+        }
+
+        return [
+            'insertadas' => $insertadas,
+            'actualizadas' => $actualizadas,
+            'eliminadas' => $eliminadas,
+        ];
+    }
+
+    private function respuestaValidacion(ValidationException $e)
+    {
+        $errors = $e->errors();
+
+        $mensaje = collect($errors)->flatten()->first()
+            ?? 'Los datos enviados no son válidos.';
+
+        return response()->json([
+            'ok' => false,
+            'guardado' => false,
+            'message' => $mensaje,
+            'errors' => $errors,
+        ], 422);
     }
 }

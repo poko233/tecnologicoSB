@@ -148,7 +148,6 @@ Route::middleware('auth:sanctum')->group(function () {
     ]);
 
     Route::apiResource('estudiantes', EstudianteController::class);
-    Route::apiResource('estudiantes', EstudianteController::class);
 
     Route::get('/areas', [AreaController::class, 'index']);
     Route::get('/areas/{area}', [AreaController::class, 'show']);
@@ -198,37 +197,79 @@ Route::middleware('auth:sanctum')->group(function () {
         'guardarPagoCuotas'
     ]);
 
+ /*
+|--------------------------------------------------------------------------
+| Asignaciones estudiantes
+|--------------------------------------------------------------------------
+*/
+Route::prefix('asignaciones')->group(function () {
+
     /*
-    |--------------------------------------------------------------------------
-    | Asignaciones estudiantes
-    |--------------------------------------------------------------------------
+    |----------------------------------------------------------------------
+    | Carreras disponibles para el filtro de asignaciones
+    | GET /api/asignaciones/carreras
+    |----------------------------------------------------------------------
     */
-    Route::prefix('asignaciones')->group(function () {
-        Route::get('/estudiantes', [
-            AsignacionesController::class,
-            'estudiantes'
-        ]);
+    Route::get('/carreras', [
+        AsignacionesController::class,
+        'carreras'
+    ]);
 
-        Route::get('/estudiantes/{idUsuario}', [
-            AsignacionesController::class,
-            'detalleEstudiante'
-        ]);
+    /*
+    |----------------------------------------------------------------------
+    | Estudiantes filtrados obligatoriamente por carrera
+    | GET /api/asignaciones/estudiantes?idCarrera=1
+    |----------------------------------------------------------------------
+    */
+    Route::get('/estudiantes', [
+        AsignacionesController::class,
+        'estudiantes'
+    ]);
 
-        Route::get('/estudiantes/{idUsuario}/semestre-uno', [
-            AsignacionesController::class,
-            'materiasSemestreUno'
-        ]);
+    /*
+    |----------------------------------------------------------------------
+    | Detalle del estudiante
+    | GET /api/asignaciones/estudiantes/{idUsuario}
+    |----------------------------------------------------------------------
+    */
+    Route::get('/estudiantes/{idUsuario}', [
+        AsignacionesController::class,
+        'detalleEstudiante'
+    ]);
 
-        Route::post('/estudiantes/{idUsuario}/inscribir-semestre-uno', [
-            AsignacionesController::class,
-            'inscribirSemestreUno'
-        ]);
+    /*
+    |----------------------------------------------------------------------
+    | Materias de semestre uno según carrera
+    | GET /api/asignaciones/estudiantes/{idUsuario}/semestre-uno?idCarrera=1
+    |----------------------------------------------------------------------
+    */
+    Route::get('/estudiantes/{idUsuario}/semestre-uno', [
+        AsignacionesController::class,
+        'materiasSemestreUno'
+    ]);
 
-        Route::put('/estudiantes/{idUsuario}', [
-            AsignacionesController::class,
-            'actualizarEstudiante'
-        ]);
-    });
+    /*
+    |----------------------------------------------------------------------
+    | Inscripción automática de materias de semestre uno
+    | POST /api/asignaciones/estudiantes/{idUsuario}/inscribir-semestre-uno
+    |----------------------------------------------------------------------
+    */
+    Route::post('/estudiantes/{idUsuario}/inscribir-semestre-uno', [
+        AsignacionesController::class,
+        'inscribirSemestreUno'
+    ]);
+
+    /*
+    |----------------------------------------------------------------------
+    | Actualización de datos del estudiante
+    | PUT /api/asignaciones/estudiantes/{idUsuario}
+    |----------------------------------------------------------------------
+    */
+    Route::put('/estudiantes/{idUsuario}', [
+        AsignacionesController::class,
+        'actualizarEstudiante'
+    ]);
+});
 
     /*
     |--------------------------------------------------------------------------
